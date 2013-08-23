@@ -23,6 +23,10 @@ serv:serv.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 queue_demo:queue_demo.o public.o 
 	$(CXX) $(CXXFLAGS) -o $@ $^
+nynn_cli_read:nynn_cli_read.o public.o socket.o nynn.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+nynn_cli_write:nynn_cli_write.o public.o socket.o nynn.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 nynn_cli_demo:nynn_cli_demo.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 cli:cli.o public.o socket.o nynn.o

@@ -11,14 +11,7 @@ int main(int argc,char*argv[])
 		memset(wbuff,0,4092);
 		if(cin.eof())break;
 		cin.getline(wbuff,4092);
-		cout<<"strlen(wbuff)="<<strlen(wbuff)<<endl;
-		nynn_write(inetaddr,2,wbuff,strlen(wbuff)+1);
-		if(nynn_read(&rbuff,&rbuffsize)!=0){
-			cout<<"failed to read!"<<endl;
-			continue;
-		}
-		cout<<rbuff<<endl;
-		delete rbuff;
+		nynn_write(inetaddr,2,wbuff,4092);
 	}
 	return 0;
 }

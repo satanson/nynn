@@ -265,7 +265,7 @@ void* poller(void* arg)
 				// search the ready read socket in links.
 				link_t *link=links;
 				while(link->rfd!=pev->data.fd)link++;
-				
+
 				task_t *t=new task_t(READ,link->rfd);
 				task_queue.push(t);
 
@@ -274,7 +274,7 @@ void* poller(void* arg)
 				// search the ready write socket in links.
 				link_t *link=links;
 				while(link->wfd!=pev->data.fd)link++;
-				
+
 				//if(link->wqueue.empty())break;
 
 				task_t *t=new task_t(WRITE,link->wfd);
@@ -301,12 +301,12 @@ void*  exchanger(void* arg)
 		delete t;
 
 		if (tasktype==WRITE){
-			
-			
+
+
 			size_t i=0;
 			while(i<linksize && links[i].wfd!=sock.getsockfd())i++;
 			link_t *link=&links[i];
-			
+
 			pthread_mutex_t *wlock=&links->wlock;
 			int errnum=pthread_mutex_trylock(wlock);
 			//other thread is busy using socket
@@ -346,6 +346,7 @@ void*  exchanger(void* arg)
 			size_t i=0;
 			while(i<linksize && links[i].rfd!=sock.getsockfd())i++;
 			nynn_token_t **cached=&links[i].cachedfragment;
+			
 
 			ssize_t size;
 			do{
@@ -380,8 +381,8 @@ void*  exchanger(void* arg)
 							//boundary point breaks message body.
 							msgsize=*(size_t*)p;
 							info("msgsize=%d",msgsize);
-							(*cached)->nr_shmid=nynn_shmat(-1,(void**)&(*cached)->nr_shm
-									,msgsize ,false);
+							(*cached)->nr_shmid=nynn_shmat(-1,
+									(void**)&(*cached)->nr_shm,msgsize ,false);
 
 							if ((*cached)->nr_shmid==-1){
 								sock.close();
@@ -393,25 +394,28 @@ void*  exchanger(void* arg)
 							p+=(*cached)->nr_size;
 
 							//recv a integral msg
+							info("msgsize=%d,nr_size=%d",msgsize,(*cached)->nr_size);
 							if (msgsize==(*cached)->nr_size){
 
 								info("RECV(shmid=%d size=%d):%s"
-									,(*cached)->nr_shmid
-									,(*cached)->nr_size
-									,(*cached)->nr_shm+sizeof(size_t));
-								
+										,(*cached)->nr_shmid
+										,(*cached)->nr_size
+										,(*cached)->nr_shm+sizeof(size_t));
+
 								nynn_shmdt((*cached)->nr_shm);
 								rqueue.push((*cached));
 								(*cached)=NULL;
 								//handle next msg
 								continue;
 							}else{
+								info("finish handling buff!");
 								//finish handling buff
 								break;
 							}
 						}else{ 
 
 							fragsize=(*cached)->nr_size;
+							info("fragsize=%d",fragsize);
 							size_t s=size-(p-buff);
 							//boundary point breaks message size field into two.
 							//so can't get size of msg.
@@ -448,9 +452,9 @@ void*  exchanger(void* arg)
 								memcpy((*cached)->nr_shm+fragsize,p,remainsize);
 								p+=remainsize;
 								info("RECV(shmid=%d size=%d):%s"
-									,(*cached)->nr_shmid
-									,(*cached)->nr_size
-									,(*cached)->nr_shm+sizeof(size_t));
+										,(*cached)->nr_shmid
+										,(*cached)->nr_size
+										,(*cached)->nr_shm+sizeof(size_t));
 
 								nynn_shmdt((*cached)->nr_shm);
 								rqueue.push((*cached));

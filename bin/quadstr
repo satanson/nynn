@@ -1,0 +1,12 @@
+#!/bin/bash
+i=1
+while [ $i -le $1 ];do
+	j=0
+	while [ $j -lt $i ];do
+		[ $(($j%4)) -eq 0 ] && [ $j -ne 0 ] && echo -n " "
+		echo -n $2
+		j=$(($j+1))
+	done
+	echo
+	i=$(($i+1))
+done
