@@ -1,19 +1,25 @@
 #include<nynn.h>
 int main(int argc,char*argv[])
 {
-	char wbuff[4092];
+	size_t inetaddrsize=atoi(argv[1]);
+	uint32_t *inetaddr=new uint32_t[inetaddrsize];
+	size_t i=0;
+	for (i=0;i<inetaddrsize;i++){
+		inet_pton(AF_INET,argv[2+i],&inetaddr[i]);
+	}
+	
+	nynn_tap_t tap;
+
+	size_t wbuffsize=atoi(argv[2+i]);
+	char *wbuff=new char[wbuffsize];
 	char *rbuff;
 	size_t rbuffsize;
-	uint32_t inetaddr[2];
-	inet_pton(AF_INET,argv[1],&inetaddr[0]);
-	inet_pton(AF_INET,argv[2],&inetaddr[1]);
 	while(true){
-		memset(wbuff,0,4092);
+		memset(wbuff,0,wbuffsize);
 		if(cin.eof())break;
-		cin.getline(wbuff,4092);
-		cout<<"strlen(wbuff)="<<strlen(wbuff)<<endl;
-		nynn_write(inetaddr,2,wbuff,strlen(wbuff)+1);
-		if(nynn_read(&rbuff,&rbuffsize)!=0){
+		cin.getline(wbuff,wbuffsize);
+		tap.write(inetaddr,inetaddrsize,wbuff,wbuffsize);
+		if(tap.read(&rbuff,&rbuffsize)!=0){
 			cout<<"failed to read!"<<endl;
 			continue;
 		}

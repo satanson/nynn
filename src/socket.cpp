@@ -104,9 +104,9 @@ int Socket::connect(sockaddr_in addr)
 {
 	return ::connect(this->sockfd,(struct sockaddr*)&addr,sizeof(addr));
 }
-int Socket::send(const char *buff,int length)
+int Socket::send(const char *buff,int length,int flag)
 {
-	return ::send(this->sockfd,buff,length,0);
+	return ::send(this->sockfd,buff,length,flag);
 }
 
 int Socket::recv(char *buff,int length,int flag)
@@ -116,11 +116,19 @@ int Socket::recv(char *buff,int length,int flag)
 int Socket::close(){
 	return ::close(this->sockfd);
 }
+int Socket::getsockname(struct sockaddr_in*saddr,socklen_t *len)
+{
+	return ::getsockname(this->sockfd,(struct sockaddr*)saddr,len);
+}
+int Socket::getpeername(struct sockaddr_in*saddr,socklen_t *len)
+{
+	return ::getpeername(this->sockfd,(struct sockaddr*)saddr,len);
+}
 uint32_t Socket::getremotehost(char*ip,size_t size)
 {
 	struct sockaddr_in raddr;
 	socklen_t raddr_len=sizeof(raddr);
-	getpeername(this->sockfd,(struct sockaddr*)&raddr,&raddr_len);
+	::getpeername(this->sockfd,(struct sockaddr*)&raddr,&raddr_len);
 	if (NULL==inet_ntop(AF_INET,&raddr.sin_addr.s_addr,ip,size)){
 		exit_on_error(errno,"failed to convert binary ip to string");
 	}
@@ -131,7 +139,7 @@ uint32_t Socket::getlocalhost(char*ip,size_t size)
 {
 	struct sockaddr_in laddr;
 	socklen_t laddr_len=sizeof(laddr);
-	getsockname(this->sockfd,(struct sockaddr*)&laddr,&laddr_len);
+	::getsockname(this->sockfd,(struct sockaddr*)&laddr,&laddr_len);
 	if (NULL==inet_ntop(AF_INET,&laddr.sin_addr.s_addr,ip,size)){
 		exit_on_error(errno,"failed to convert binary ip to string");
 	}
@@ -142,7 +150,7 @@ unsigned short Socket::getremoteport()
 {
 	struct sockaddr_in raddr;
 	socklen_t raddr_len=sizeof(raddr);
-	getpeername(this->sockfd,(struct sockaddr*)&raddr,&raddr_len);
+	::getpeername(this->sockfd,(struct sockaddr*)&raddr,&raddr_len);
 	return (unsigned short)ntohs(raddr.sin_port);
 }
 
@@ -150,7 +158,7 @@ unsigned short Socket::getlocalport()
 {
 	struct sockaddr_in laddr;
 	socklen_t laddr_len=sizeof(laddr);
-	getsockname(this->sockfd,(struct sockaddr*)&laddr,&laddr_len);
+	::getsockname(this->sockfd,(struct sockaddr*)&laddr,&laddr_len);
 	return (unsigned short)ntohs(laddr.sin_port);
 }
 

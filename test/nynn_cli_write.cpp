@@ -7,11 +7,12 @@ int main(int argc,char*argv[])
 	uint32_t inetaddr[2];
 	inet_pton(AF_INET,argv[1],&inetaddr[0]);
 	inet_pton(AF_INET,argv[2],&inetaddr[1]);
+	nynn_tap_t tap;
 	while(true){
 		memset(wbuff,0,4092);
 		if(cin.eof())break;
 		cin.getline(wbuff,4092);
-		nynn_write(inetaddr,2,wbuff,4092);
+		tap.write(inetaddr,2,wbuff,4092);
 	}
 	return 0;
 }

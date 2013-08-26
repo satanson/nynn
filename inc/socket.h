@@ -26,11 +26,13 @@ class Socket{
 		Socket accept(int nonblocking=BLOCKING);
 		int connect(const char* ip,short port);
 		int connect(sockaddr_in addr);
-		int send(const char *buff,int length);
+		int send(const char *buff,int length,int flag=0);
 		int recv(char *buff,int length,int flag=0);
 		int close();
 		int shutdown();
 		
+		int getsockname(struct sockaddr_in *saddr,socklen_t *len);
+		int getpeername(struct sockaddr_in *saddr,socklen_t *len);
 		uint32_t getremotehost(char*host,size_t size=INET_ADDRSTRLEN);
 		uint32_t getlocalhost(char*host,size_t size=INET_ADDRSTRLEN);
 		unsigned short getremoteport();

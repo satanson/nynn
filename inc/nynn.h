@@ -33,15 +33,23 @@ struct nynn_token_t{
 	int 	nr_refcount;
 	char*  	nr_shm;
 };
+class nynn_tap_t{
+	private:
+		pthread_mutex_t wlock;
+		pthread_mutex_t rlock;
+		int wfd;
+		int rfd;
+	public:
+		nynn_tap_t();
+		~nynn_tap_t();
+
+		int read(char**buff,size_t *size);
+		int write(uint32_t *inetaddr, size_t num, char*buff,size_t size);
+};
 
 int nynn_shmat(int shmid, void**shmaddr, size_t size,bool removal);
 int nynn_shmdt(const void*shmaddr);
 
-int nynn_write(uint32_t *inetaddr, size_t num, nynn_token_t* req);
-int nynn_write(uint32_t *inetaddr, size_t num, int shmid,size_t size);
-int nynn_write(uint32_t *inetaddr, size_t num, char*buff,size_t size);
-
-int nynn_read(nynn_token_t* req);
-int nynn_read(int *shmid,size_t *size);
-int nynn_read(char**buff,size_t *size);
+int nynn_write(nynn_tap_t *tap,uint32_t *inetaddr,size_t num, char*buff,size_t size);
+int nynn_read(nynn_tap_t *tap,char**buff,size_t *size);
 #endif

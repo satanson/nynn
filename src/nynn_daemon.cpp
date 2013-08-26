@@ -7,7 +7,8 @@ size_t linksize;
 char hostname[HOSTNAME_SIZE];
 uint32_t hostaddr;
 concurrent_queue<nynn_token_t*> rqueue;
-concurrent_queue<task_t*> task_queue;
+concurrent_queue<task_t*> wtask_queue;
+concurrent_queue<task_t*> rtask_queue;
 nynn_token_t* delaycleaned; 
 
 void intr_handler(int signo)
@@ -31,6 +32,7 @@ int main(int argc,char*argv[])
 	for (n=0;n<linksize;n++){
 		links[n].cachedfragment=NULL;
 		pthread_mutex_init(&links[n].wlock,NULL);
+		pthread_mutex_init(&links[n].rlock,NULL);
 		cout<<links[n].hostname<<":"
 			<<links[n].hostaddr<<":"
 			<<links[n].port<<endl;
@@ -43,10 +45,10 @@ int main(int argc,char*argv[])
 	}
 
 	pthread_t *tids =new pthread_t[linksize-k];
-	pthread_create(&tids[0],NULL,accept_handler,&links[k]);
+	pthread_create(&tids[0],NULL,acceptor,&links[k]);
 
 	for (size_t i=k+1;i<linksize;i++){
-		pthread_create(&tids[i-k],NULL,connect_handler,&links[i]);
+		pthread_create(&tids[i-k],NULL,connector,&links[i]);
 	}
 
 	for (size_t i=0;i<linksize-k;i++){
@@ -62,10 +64,12 @@ int main(int argc,char*argv[])
 	pthread_t poller_tid;
 
 	pthread_create(&poller_tid,NULL,poller,NULL);
-	pthread_t exchanger_tids[10];
+	pthread_t writer_tids[10],reader_tids[10];
 
-	for (size_t i=0;i<3;i++){
-		pthread_create(exchanger_tids+i,NULL,exchanger,NULL);
+	size_t worker_size=atoi(argv[2]);
+	for (size_t i=0;i<worker_size;i++){
+		pthread_create(writer_tids+i,NULL,writer,NULL);
+		pthread_create(reader_tids+i,NULL,reader,NULL);
 	}
 
 	Socket recipient("127.0.0.1",30001);
@@ -73,49 +77,8 @@ int main(int argc,char*argv[])
 
 	while(true){
 		Socket response=recipient.accept();
-		nynn_token_t *req=new nynn_token_t;
-		if (sizeof(*req)!=response.recv((char*)req,sizeof(*req))){
-			error("failed to recv request!");
-		}
-
-		switch(req->nr_cmd){
-			case WRITE:
-				{
-					nynn_shmat(req->nr_shmid,(void**)&req->nr_shm,req->nr_size,true);
-					size_t num=0;
-					response.recv((char*)&num,sizeof(num)); 
-					uint32_t *inetaddr=new uint32_t[num];
-					response.recv((char*)inetaddr,sizeof(uint32_t)*num);
-					req->nr_refcount=num;
-
-					for (size_t i=0;i<num;i++){
-						size_t j=0;
-						while(j<linksize && links[j].hostaddr!=inetaddr[i])j++;
-						if (j<linksize){
-							info("push req to %s",links[j].hostname);
-							links[j].wqueue.push(req);
-						}
-					}
-					info("WRITE(%d): %s",req->nr_size,req->nr_shm+sizeof(size_t));
-				}
-				break;
-
-			case READ:
-				{
-					info("READ");
-					req=rqueue.pop();
-					info("READ(shmid=%d size=%d)",req->nr_shmid,req->nr_size);
-					response.send((char*)req,sizeof(*req));
-					delete req;
-				}
-				break;
-
-			case CONTROL:
-				break;
-			default:
-				error("never reach here");
-				break;
-		}
+		pthread_t tid;
+		pthread_create(&tid,NULL,wresponder,(void*)response.getsockfd());
 	}
 
 	return 0;
@@ -171,7 +134,7 @@ int loadconfig(const char*cfgpath,link_t *links,size_t size)
 	return k;
 }
 
-void* connect_handler(void*args)
+void* connector(void*args)
 {
 	link_t* link=(link_t*)args;
 	sockaddr_in saddr;
@@ -198,7 +161,7 @@ void* connect_handler(void*args)
 	return NULL;
 }
 
-void* accept_handler(void*args)
+void* acceptor(void*args)
 {
 	link_t* link=(link_t*)args;
 	sockaddr_in saddr;
@@ -229,7 +192,7 @@ void* accept_handler(void*args)
 	return NULL;
 }
 
-void* poller(void* arg)
+void* poller(void* args)
 {
 	int epollfd,readyfds;
 	struct epoll_event ev,*readyEvents,*pev;
@@ -267,7 +230,7 @@ void* poller(void* arg)
 				while(link->rfd!=pev->data.fd)link++;
 
 				task_t *t=new task_t(READ,link->rfd);
-				task_queue.push(t);
+				rtask_queue.push(t);
 
 			}else if (pev->events & EPOLLOUT){
 
@@ -275,10 +238,10 @@ void* poller(void* arg)
 				link_t *link=links;
 				while(link->wfd!=pev->data.fd)link++;
 
-				//if(link->wqueue.empty())break;
+				if(link->wqueue.empty())continue;
 
 				task_t *t=new task_t(WRITE,link->wfd);
-				task_queue.push(t);
+				wtask_queue.push(t);
 
 			}else if (pev->events & EPOLLERR){
 				error("EPOLLERR happens!(fd=%d)",pev->data.fd);
@@ -291,186 +254,280 @@ void* poller(void* arg)
 	}
 }
 
-void*  exchanger(void* arg)
+void*  writer(void* args)
+{
+	while(true){
+		task_t *t=wtask_queue.pop();	
+		Socket sock(t->sockfd);
+
+		size_t i=0;
+		while(i<linksize && links[i].wfd!=sock.getsockfd())i++;
+		link_t *link=&links[i];
+
+		pthread_mutex_t *wlock=&links->wlock;
+		int errnum=pthread_mutex_trylock(wlock);
+		//other thread is busy using socket
+		if(errnum==EBUSY){
+			info("wlock is is busy!");
+			continue;
+		}else if (errnum!=0){
+			sock.close();
+			exit_on_error(errnum,"failed to pthread_mutex_trylock");
+		}
+
+		if (!link->wqueue.empty()){
+			nynn_token_t*req=link->wqueue.pop();
+			if (--req->nr_refcount==0){
+				if (delaycleaned!=NULL){
+					nynn_shmdt(delaycleaned->nr_shm);
+					delete delaycleaned;
+				}
+				delaycleaned=req;
+			}
+			info("SEND:%s",req->nr_shm+sizeof(size_t));
+			ssize_t size=0;
+			do{
+				ssize_t s=sock.send(req->nr_shm+size,req->nr_size-size);
+				if(s==-1 && errno!=EAGAIN){
+					error("sockfd=%d",sock.getsockfd());
+					exit(1);
+				}else if(s>0){
+					size+=s;
+				}else{//s==-1 && errno==EAGAIN
+					size+=0;
+				}
+			}while(size<req->nr_size);
+		}
+		pthread_mutex_unlock(wlock);
+	}
+	return NULL;
+}
+
+void*  reader(void* args)
 {
 	char buff[65536];
 	while(true){
-		task_t *t=task_queue.pop();	
+		task_t *t=rtask_queue.pop();	
 		Socket sock(t->sockfd);
-		int tasktype=t->tasktype;
 		delete t;
 
-		if (tasktype==WRITE){
+		size_t i=0;
+		while(i<linksize && links[i].rfd!=sock.getsockfd())i++;
+		nynn_token_t **cached=&links[i].cachedfragment;
+		pthread_mutex_t *rlock=&links[i].rlock;
 
-
-			size_t i=0;
-			while(i<linksize && links[i].wfd!=sock.getsockfd())i++;
-			link_t *link=&links[i];
-
-			pthread_mutex_t *wlock=&links->wlock;
-			int errnum=pthread_mutex_trylock(wlock);
-			//other thread is busy using socket
-			if(errnum==EBUSY){
+		pthread_mutex_lock(rlock);
+		ssize_t size;
+		do{
+			memset(buff,0,sizeof(buff));
+			size=sock.recv(buff,sizeof(buff));
+			if (size==-1 && errno!=EAGAIN){
+				error("error happens when recv!");
+				exit(1);
+			}else if (size==-1 && errno==EAGAIN){
 				continue;
-			}else if (errnum!=0){
-				sock.close();
-				exit_on_error(errnum,"failed to pthread_mutex_trylock");
+			}else if (size==0){
+				error("peer socket is closed!");
+				exit(1);
 			}
 
-			if (!link->wqueue.empty()){
-				nynn_token_t*req=link->wqueue.pop();
-				if (--req->nr_refcount==0){
-					if (delaycleaned!=NULL){
-						nynn_shmdt(delaycleaned->nr_shm);
-						delete delaycleaned;
-					}
-					delaycleaned=req;
-				}
-				info("SEND:%s",req->nr_shm+sizeof(size_t));
-				ssize_t size=0;
-				do{
-					size_t s=sock.send(req->nr_shm+size,req->nr_size-size);
-					if(s==-1 && errno!=EAGAIN){
-						error("sockfd=%d",sock.getsockfd());
-						exit(1);
-					}else if(s>0){
-						size+=s;
-					}else{//s==-1 && errno==EAGAIN
-						size+=0;
-					}
-				}while(size<req->nr_size);
-			}
-			pthread_mutex_unlock(wlock);
+			char *p=buff;
+			size_t fragsize;
+			size_t msgsize;
+			size_t remainsize;
 
-		}else if (tasktype==READ){
-			size_t i=0;
-			while(i<linksize && links[i].rfd!=sock.getsockfd())i++;
-			nynn_token_t **cached=&links[i].cachedfragment;
-			
-
-			ssize_t size;
 			do{
-				memset(buff,0,sizeof(buff));
-				size=sock.recv(buff,sizeof(buff));
-				if (size==-1 && errno!=EAGAIN){
-					error("error happens when recv!");
-					exit(1);
-				}else if (size==-1 && errno==EAGAIN){
-					continue;
-				}else if (size==0){
-					error("peer socket is closed!");
-					exit(1);
-				}else{
-					char *p=buff;
-					size_t fragsize;
-					size_t msgsize;
-					size_t remainsize;
+				if((*cached)==NULL){
+					(*cached)=new nynn_token_t;
 
-					do{
-						if((*cached)==NULL){
-							(*cached)=new nynn_token_t;
+					size_t s=size-(p-buff);		
+					//boundary point breaks message size field into two.
+					if (s<sizeof(size_t)){
+						(*cached)->nr_size=s;
+						(*cached)->nr_shm=new char[sizeof(size_t)];
+						memcpy((*cached)->nr_shm,p,s);
+						break;
+					}
+					//boundary point breaks message body.
+					msgsize=*(size_t*)p;
+					info("msgsize=%d",msgsize);
+					(*cached)->nr_shmid=nynn_shmat(-1,(void**)&(*cached)->nr_shm,msgsize ,false);
 
-							size_t s=size-(p-buff);		
-							//boundary point breaks message size field into two.
-							if (s<sizeof(size_t)){
-								(*cached)->nr_size=s;
-								(*cached)->nr_shm=new char[sizeof(size_t)];
-								memcpy((*cached)->nr_shm,p,s);
-								break;
-							}
-							//boundary point breaks message body.
-							msgsize=*(size_t*)p;
-							info("msgsize=%d",msgsize);
-							(*cached)->nr_shmid=nynn_shmat(-1,
-									(void**)&(*cached)->nr_shm,msgsize ,false);
+					if ((*cached)->nr_shmid==-1){
+						sock.close();
+						exit_on_error(errno,"failed to nynn_shmat");
+					}
 
-							if ((*cached)->nr_shmid==-1){
-								sock.close();
-								exit_on_error(errno,"failed to nynn_shmat");
-							}
+					(*cached)->nr_size=(s<msgsize?s:msgsize);
+					memcpy((*cached)->nr_shm,p,(*cached)->nr_size);
+					p+=(*cached)->nr_size;
 
-							(*cached)->nr_size=(s<msgsize?s:msgsize);
-							memcpy((*cached)->nr_shm,p,(*cached)->nr_size);
-							p+=(*cached)->nr_size;
+					//recv a integral msg
+					info("msgsize=%d,nr_size=%d",msgsize,(*cached)->nr_size);
+					if (msgsize==(*cached)->nr_size){
 
-							//recv a integral msg
-							info("msgsize=%d,nr_size=%d",msgsize,(*cached)->nr_size);
-							if (msgsize==(*cached)->nr_size){
+						info("RECV(shmid=%d size=%d):%s"
+								,(*cached)->nr_shmid
+								,(*cached)->nr_size
+								,(*cached)->nr_shm+sizeof(size_t));
 
-								info("RECV(shmid=%d size=%d):%s"
-										,(*cached)->nr_shmid
-										,(*cached)->nr_size
-										,(*cached)->nr_shm+sizeof(size_t));
+						nynn_shmdt((*cached)->nr_shm);
+						rqueue.push((*cached));
+						(*cached)=NULL;
+						//handle next msg
+						continue;
+					}else{
+						info("TID=%d::finish handling buff!"
+								,pthread_self());
+						//finish handling buff
+						break;
+					}
+				}else{ 
 
-								nynn_shmdt((*cached)->nr_shm);
-								rqueue.push((*cached));
-								(*cached)=NULL;
-								//handle next msg
-								continue;
-							}else{
-								info("finish handling buff!");
-								//finish handling buff
-								break;
-							}
-						}else{ 
+					fragsize=(*cached)->nr_size;
+					info("fragsize=%d",fragsize);
+					size_t s=size-(p-buff);
+					//boundary point breaks message size field into two.
+					//so can't get size of msg.
+					if (fragsize+s<sizeof(size_t)){
+						memcpy((*cached)->nr_shm+fragsize,p,s);	
+						(*cached)->nr_size+=s;
+						break;
+					}
+					//can get size of msg
+					if (fragsize<sizeof(size_t)&&fragsize+s>=sizeof(size_t)){
+						size_t s1=sizeof(size_t)-fragsize;
+						memcpy((*cached)->nr_shm+fragsize,p,s1);	
+						p+=s1;
+						msgsize=*(size_t*)(*cached)->nr_shm;
+						delete (*cached)->nr_shm;
 
-							fragsize=(*cached)->nr_size;
-							info("fragsize=%d",fragsize);
-							size_t s=size-(p-buff);
-							//boundary point breaks message size field into two.
-							//so can't get size of msg.
-							if (fragsize+s<sizeof(size_t)){
-								memcpy((*cached)->nr_shm+fragsize,p,s);	
-								(*cached)->nr_size+=s;
-								break;
-							}
-							//can get size of msg
-							if (fragsize<sizeof(size_t)&&fragsize+s>=sizeof(size_t)){
-								size_t s1=sizeof(size_t)-fragsize;
-								memcpy((*cached)->nr_shm+fragsize,p,s1);	
-								p+=s1;
-								msgsize=*(size_t*)(*cached)->nr_shm;
-								delete (*cached)->nr_shm;
+						(*cached)->nr_shmid=nynn_shmat(-1,(void**)&(*cached)->nr_shm,msgsize,false);
 
-								(*cached)->nr_shmid=nynn_shmat(-1
-										,(void**)&(*cached)->nr_shm,msgsize,false);
+						if ((*cached)->nr_shmid==-1){
+							sock.close();
+							exit_on_error(errno,"failed to nynn_shmat");
+						}
+						memcpy((*cached)->nr_shm,&msgsize,sizeof(size_t));
+						(*cached)->nr_size=sizeof(size_t);
+					}
+					//handle incomplete msg
+					s=size-(p-buff);
+					msgsize=*(size_t*)(*cached)->nr_shm;
+					fragsize=(*cached)->nr_size;
+					remainsize=msgsize-fragsize;
+					if (remainsize<=s){
+						(*cached)->nr_size=msgsize;
+						memcpy((*cached)->nr_shm+fragsize,p,remainsize);
+						p+=remainsize;
+						info("RECV(shmid=%d size=%d):%s"
+								,(*cached)->nr_shmid
+								,(*cached)->nr_size
+								,(*cached)->nr_shm+sizeof(size_t));
 
-								if ((*cached)->nr_shmid==-1){
-									sock.close();
-									exit_on_error(errno,"failed to nynn_shmat");
-								}
-								memcpy((*cached)->nr_shm,&msgsize,sizeof(size_t));
-								(*cached)->nr_size=sizeof(size_t);
-							}
-							//handle incomplete msg
-							s=size-(p-buff);
-							msgsize=*(size_t*)(*cached)->nr_shm;
-							fragsize=(*cached)->nr_size;
-							remainsize=msgsize-fragsize;
-							if (remainsize<s){
-								(*cached)->nr_size=msgsize;
-								memcpy((*cached)->nr_shm+fragsize,p,remainsize);
-								p+=remainsize;
-								info("RECV(shmid=%d size=%d):%s"
-										,(*cached)->nr_shmid
-										,(*cached)->nr_size
-										,(*cached)->nr_shm+sizeof(size_t));
-
-								nynn_shmdt((*cached)->nr_shm);
-								rqueue.push((*cached));
-								(*cached)=NULL;
-							}else{
-								(*cached)->nr_size+=s;
-								memcpy((*cached)->nr_shm+fragsize,p,s);
-								break;
-							}	
-						}			
-					}while(size-(p-buff)>0);
-				}
-			}while(size==65536);
-
-		}else{
-			warn("can't reach here");
-		}
+						nynn_shmdt((*cached)->nr_shm);
+						rqueue.push((*cached));
+						(*cached)=NULL;
+					}else{
+						(*cached)->nr_size+=s;
+						memcpy((*cached)->nr_shm+fragsize,p,s);
+						break;
+					}	
+				}			
+			}while(size-(p-buff)>0);
+		}while(size==65536);
+		pthread_mutex_unlock(rlock);
 	}
+}
+
+void* wresponder(void*args)
+{
+	Socket wresponse((int)args);
+
+	if (pthread_detach(pthread_self())!=0){
+		wresponse.close();
+		exit_on_error(errno,"failed to pthread_detach");
+	}
+	
+	struct sockaddr_in saddr;
+	if (sizeof(saddr)!=wresponse.recv((char*)&saddr,sizeof(saddr),MSG_WAITALL)){
+		wresponse.close();
+		exit_on_error(errno,"failed to recv client's port!");	
+	}
+	Socket rresponse;
+	if (rresponse.connect(saddr)!=0){
+		error("failed to connect");
+		pthread_exit((void*)1);
+	};
+	pthread_t tid;
+	pthread_create(&tid,NULL,rresponder,(void*)rresponse.getsockfd());
+
+
+	while(true){
+		nynn_token_t *req=new nynn_token_t;
+		if (sizeof(*req)!=wresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){
+			wresponse.close();
+			thread_exit_on_error(errno,"terminate thread!");
+		}
+
+		nynn_shmat(req->nr_shmid,(void**)&req->nr_shm,req->nr_size,true);
+		
+		size_t num=0;
+		if (sizeof(num)!=wresponse.recv((char*)&num,sizeof(num),MSG_WAITALL)){
+			wresponse.close();
+			thread_exit_on_error(errno,"terminate  thread");
+		}	
+		
+		uint32_t *inetaddr=new uint32_t[num];
+		if (sizeof(uint32_t)*num!=wresponse.recv((char*)inetaddr,sizeof(uint32_t)*num,MSG_WAITALL)){
+			wresponse.close();
+			thread_exit_on_error(errno,"terminate  thread");
+		}
+		
+		req->nr_refcount=num;
+
+		for (size_t i=0;i<num;i++){
+			size_t j=0;
+			while(j<linksize && links[j].hostaddr!=inetaddr[i])j++;
+			if (j<linksize){
+				info("push req to %s",links[j].hostname);
+				links[j].wqueue.push(req);
+			}
+		}
+		info("WRITE(%d): %s",req->nr_size,req->nr_shm+sizeof(size_t));
+	}
+	return NULL;
+}
+
+void* rresponder(void*args)
+{
+	Socket rresponse((int)args);
+
+	if (pthread_detach(pthread_self())!=0){
+		rresponse.close();
+		exit_on_error(errno,"failed to pthread_detach");
+	}
+
+	if (sizeof(int)!=rresponse.send("\0\0\0\0",sizeof(int))){
+		rresponse.close();
+		exit_on_error(errno,"failed to pthread_detach");
+	}
+
+	while(true){
+		nynn_token_t *req=new nynn_token_t;
+		if (sizeof(*req)!=rresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){
+			rresponse.close();
+			thread_exit_on_error(errno,"terminate thread!");
+		}
+
+		info("READ");
+		req=rqueue.pop();
+		info("READ(shmid=%d size=%d)",req->nr_shmid,req->nr_size);
+		if (sizeof(*req)!=rresponse.send((char*)req,sizeof(*req))){
+			rresponse.close();
+			thread_exit_on_error(errno,"terminate thread!");
+		}
+		delete req;
+	}
+	return NULL;
 }

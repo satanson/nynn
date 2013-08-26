@@ -14,6 +14,7 @@ struct link_t{
 	nynn_token_t *cachedfragment;
 	concurrent_queue<nynn_token_t*> wqueue;
 	pthread_mutex_t wlock;
+	pthread_mutex_t rlock;
 	friend bool operator<(const link_t& lhs, const link_t &rhs);
 };
 
@@ -39,12 +40,15 @@ extern char hostname[];
 extern uint32_t hostaddr;
 extern concurrent_queue<nynn_token_t*> rqueue;
 
-extern concurrent_queue<task_t*> task_queue;
+extern concurrent_queue<task_t*> wtask_queue;
+extern concurrent_queue<task_t*> rtask_queue;
 
-void* connect_handler(void*args);
-void* accept_handler(void*args);
+void* connector(void*args);
+void* acceptor(void*args);
 void* poller(void*args);
-void* exchanger(void*args);
-
+void* writer(void*args);
+void* reader(void*args);
+void* wresponder(void*args);
+void* rresponder(void*args);
 #endif
 

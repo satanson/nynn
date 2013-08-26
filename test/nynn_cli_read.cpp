@@ -1,14 +1,11 @@
 #include<nynn.h>
-int main(int argc,char*argv[])
+int main()
 {
-	char wbuff[4092];
 	char *rbuff;
 	size_t rbuffsize;
-	uint32_t inetaddr[2];
-	inet_pton(AF_INET,argv[1],&inetaddr[0]);
-	inet_pton(AF_INET,argv[2],&inetaddr[1]);
+	nynn_tap_t tap;
 	while(true){
-		if(nynn_read(&rbuff,&rbuffsize)!=0){
+		if(tap.read(&rbuff,&rbuffsize)!=0){
 			cout<<"failed to read!"<<endl;
 			continue;
 		}
