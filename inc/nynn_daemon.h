@@ -34,7 +34,12 @@ enum{
 	HOSTNAME_SIZE=32
 };
 
-extern link_t links[];
+extern link_t *links;
+extern size_t links_max;
+extern size_t writer_num;
+extern size_t reader_num;
+extern char cfgpath[];
+
 extern size_t linksize;
 extern char hostname[];
 extern uint32_t hostaddr;

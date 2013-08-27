@@ -47,6 +47,8 @@ nynn_tap_t::nynn_tap_t()
 	}
 	
 	Socket listenrso("127.0.0.1",INADDR_ANY);
+	listenrso.listen(1);
+	
 	struct sockaddr_in saddr;
 	socklen_t len=sizeof(saddr);
 	listenrso.getsockname(&saddr,&len);
@@ -57,14 +59,12 @@ nynn_tap_t::nynn_tap_t()
 		exit_on_error(errno,"failed to send reading port to nynn_daemon!");
 	}
 	
-	listenrso.listen(1);
 	Socket rso=listenrso.accept();
-	int val=1;
-	if (sizeof(val)!=rso.recv((char*)&val,sizeof(val),MSG_WAITALL)){
+	if (sizeof(size_t)!=rso.recv((char*)&this->shmmax,sizeof(size_t),MSG_WAITALL)){
 		exit_on_error(errno,"failed to connect nynn_daemon for reading!");
 	}
 	
-	info("val=%d",val);
+	info("shmmax=%d",this->shmmax);
 	this->wfd=wso.getsockfd();
 	this->rfd=rso.getsockfd();
 }
@@ -81,6 +81,10 @@ int nynn_tap_t::write(uint32_t *inetaddr,size_t num,char*buff,size_t size)
 {
 	char *shm;
 	size_t shmsize=size+sizeof(size);
+	if(shmsize>shmmax){
+		info("too big message(max=%d)",this->shmmax);
+		return -1;
+	}
 	int shmid=nynn_shmat(-1,(void**)&shm,shmsize,false);
 	memcpy(shm,(char*)&shmsize,sizeof(shmsize));
 	memcpy(shm+sizeof(shmsize),buff,size);
@@ -128,7 +132,7 @@ int nynn_tap_t::read(char**buff,size_t*size)
 		error("failed to nynn_shmat");
 		return -1;
 	}
-	*size-=sizeof(size_t);
+	*size=tok.nr_size-sizeof(size_t);
 	*buff=new char[*size];
 	memcpy(*buff,shm+sizeof(size_t),*size);
 	nynn_shmdt(shm);

@@ -2,7 +2,15 @@
 #include<nynn.h>
 #include<public.h>
 
-link_t links[LINK_MAX];
+link_t *links;
+size_t links_max;
+size_t writer_num;
+size_t reader_num;
+size_t shmmax;
+enum{
+	CFGPATH_SIZE=64
+};
+char  cfgpath[CFGPATH_SIZE];
 size_t linksize;
 char hostname[HOSTNAME_SIZE];
 uint32_t hostaddr;
@@ -18,11 +26,62 @@ void intr_handler(int signo)
 
 int main(int argc,char*argv[])
 {
+	//default config
+	links_max=10;
+	writer_num=2;
+	reader_num=2;
+	memset(cfgpath,0,sizeof(CFGPATH_SIZE));
+	strncpy(cfgpath,"network.cfg",CFGPATH_SIZE);
+	
+	while(true){
+		int ch=getopt(argc,argv,":+l:r:w:f:h");
+		if(ch=='?'){
+			cout<<"nynn_daemon:invalid option -- '"
+				<<(char)optopt<<"'"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
+			exit(0);
+		}else if (ch==':'){
+			cout<<"nynn_daemon:option requires argument -- '"
+				<<(char)optopt<<"'"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
+			exit(0);
+		}else if (ch==-1){
+			break;
+		}else if (ch=='l'){
+			links_max=(atoi(optarg)<=0?links_max:atoi(optarg));
+		}else if (ch=='r'){
+			reader_num=(atoi(optarg)<=0?links_max:atoi(optarg));
+		}else if (ch=='w'){
+			writer_num=(atoi(optarg)<=0?links_max:atoi(optarg));
+		}else if (ch=='f'){
+			strncpy(cfgpath,optarg,CFGPATH_SIZE);
+		}else {
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"nynn_daemon is a service for message multicast."<<endl;
+			cout<<"Options:"<<endl;
+			cout<<"\t-l the maximum number of links(default 10)"<<endl;
+			cout<<"\t-r the number of thread for reading message(default 2)"<<endl;
+			cout<<"\t-w the number of thread for writing message(default 2)"<<endl;
+			cout<<"\t-f the path of network configure file(default './network.cfg')"<<endl;
+			cout<<"\t-h help nynn_daemon"<<endl;
+
+		}
+
+	}	
+
+	struct shminfo info;
+	shmctl(0,IPC_INFO,(struct shmid_ds*)&info);
+	shmmax=info.shmmax;
+
 	struct sigaction sa_intr;
 	sa_intr.sa_handler=intr_handler;
 	sigaction(SIGINT,&sa_intr,NULL);
-	const char* cfgpath=argv[1];
-	linksize=loadconfig(cfgpath,links,LINK_MAX);
+
+	links=new link_t[links_max];
+	
+	linksize=loadconfig(cfgpath,links,links_max);
 	hostaddr=gethostaddr(hostname,HOSTNAME_SIZE);
 	info("hostname=%s\n",hostname);
 	info("hostaddr=%d\n",hostaddr);
@@ -62,14 +121,15 @@ int main(int argc,char*argv[])
 	delaycleaned=NULL;
 
 	pthread_t poller_tid;
-
 	pthread_create(&poller_tid,NULL,poller,NULL);
-	pthread_t writer_tids[10],reader_tids[10];
 
-	size_t worker_size=atoi(argv[2]);
-	for (size_t i=0;i<worker_size;i++){
-		pthread_create(writer_tids+i,NULL,writer,NULL);
-		pthread_create(reader_tids+i,NULL,reader,NULL);
+	pthread_t *reader_tid=new pthread_t[reader_num];
+	for (size_t i=0;i<reader_num;i++){
+		pthread_create(reader_tid+i,NULL,reader,NULL);
+	}
+	pthread_t *writer_tid=new pthread_t[writer_num];
+	for (size_t i=0;i<writer_num;i++){
+		pthread_create(writer_tid+i,NULL,writer,NULL);
 	}
 
 	Socket recipient("127.0.0.1",30001);
@@ -508,7 +568,7 @@ void* rresponder(void*args)
 		exit_on_error(errno,"failed to pthread_detach");
 	}
 
-	if (sizeof(int)!=rresponse.send("\0\0\0\0",sizeof(int))){
+	if (sizeof(int)!=rresponse.send((char*)&shmmax,sizeof(int))){
 		rresponse.close();
 		exit_on_error(errno,"failed to pthread_detach");
 	}

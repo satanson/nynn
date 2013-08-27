@@ -39,6 +39,7 @@ class nynn_tap_t{
 		pthread_mutex_t rlock;
 		int wfd;
 		int rfd;
+		size_t shmmax;
 	public:
 		nynn_tap_t();
 		~nynn_tap_t();

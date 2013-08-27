@@ -31,6 +31,8 @@ nynn_cli_demo:nynn_cli_demo.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 cli:cli.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+getopt_demo:getopt_demo.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 socket_demo:socket_demo.o public.o socket.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 %.o:%.cpp
