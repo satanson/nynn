@@ -1,0 +1,19 @@
+I.Complie nynn_daemon:
+	cd nynn/bin/
+	make nynn_daemon 
+
+II.Network configure(nynn/bin/network.cfg):
+	triple tuple:hostname inetaddr port
+
+III.Start nynn_daemon:
+	service iptables stop
+	./nynn_daemon -h #help
+	./nynn_daemon -l 3 -r 2 -w 2 -f network.cfg
+
+
+IV.Interface(nynn/test/nynn_cli_demo.cpp):
+	nynn_tap_t tap=*new nynn_tap_t();
+	tap->write(...);
+	tap->read(...);
+
+	
