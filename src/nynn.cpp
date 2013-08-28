@@ -37,12 +37,13 @@ int nynn_shmdt(const void*shmaddr)
 	return 0;
 }
 
-nynn_tap_t::nynn_tap_t()
+nynn_tap_t::nynn_tap_t(uint16_t port,int hoseno)
 {
+	this->hoseno=hoseno;
 	pthread_mutex_init(&this->wlock,NULL);
 	pthread_mutex_init(&this->rlock,NULL);
 	Socket wso;
-	if (wso.connect("127.0.0.1",30001)!=0){
+	if (wso.connect("127.0.0.1",port)!=0){
 		exit_on_error(errno,"failed to connect nynn_daemon for writting!");
 	}
 	
@@ -60,6 +61,11 @@ nynn_tap_t::nynn_tap_t()
 	}
 	
 	Socket rso=listenrso.accept();
+	
+	if (sizeof(this->hoseno)!=rso.send((char*)&this->hoseno,sizeof(this->hoseno))){
+		exit_on_error(errno,"failed to send hoseno number to nynn_daemon!");
+	}
+	
 	if (sizeof(size_t)!=rso.recv((char*)&this->shmmax,sizeof(size_t),MSG_WAITALL)){
 		exit_on_error(errno,"failed to connect nynn_daemon for reading!");
 	}
@@ -80,17 +86,19 @@ nynn_tap_t::~nynn_tap_t()
 int nynn_tap_t::write(uint32_t *inetaddr,size_t num,char*buff,size_t size)
 {
 	char *shm;
-	size_t shmsize=size+sizeof(size);
+	size_t shmsize=size+sizeof(nynn_msg_t);
 	if(shmsize>shmmax){
 		info("too big message(max=%d)",this->shmmax);
 		return -1;
 	}
 	int shmid=nynn_shmat(-1,(void**)&shm,shmsize,false);
-	memcpy(shm,(char*)&shmsize,sizeof(shmsize));
-	memcpy(shm+sizeof(shmsize),buff,size);
+	nynn_msg_t *msg=(nynn_msg_t*)shm;
+	msg->msgsize=shmsize;
+	msg->hoseno=this->hoseno;
+	memcpy(shm+sizeof(nynn_msg_t),buff,size);
 	nynn_shmdt(shm);
-	
-	nynn_token_t req={shmid,shmsize,WRITE,0,NULL};
+
+	nynn_token_t req={shmid,shmsize,WRITE,0,this->hoseno,NULL};
 	
 	size_t bufsize=sizeof(req)+sizeof(num)+sizeof(uint32_t)*num;
 	char *buf=new char[bufsize];
@@ -115,7 +123,7 @@ int nynn_tap_t::read(char**buff,size_t*size)
 {
 	Socket so(this->rfd);
 	nynn_token_t tok;	
-	tok.nr_cmd=READ;
+	tok.cmd=READ;
 	pthread_mutex_lock(&this->rlock);
 	if (sizeof(tok)!=so.send((char*)&tok,sizeof(tok))){
 		error("failed to send");
@@ -128,13 +136,14 @@ int nynn_tap_t::read(char**buff,size_t*size)
 	pthread_mutex_unlock(&this->rlock);
 	
 	char *shm;
-	if(nynn_shmat(tok.nr_shmid,(void**)&shm,tok.nr_size,true)==-1){
+	if(nynn_shmat(tok.shmid,(void**)&shm,tok.size,true)==-1){
 		error("failed to nynn_shmat");
 		return -1;
 	}
-	*size=tok.nr_size-sizeof(size_t);
+	nynn_msg_t *msg=(nynn_msg_t*)shm;
+	*size=msg->msgsize-sizeof(nynn_msg_t);
 	*buff=new char[*size];
-	memcpy(*buff,shm+sizeof(size_t),*size);
+	memcpy(*buff,shm+sizeof(nynn_msg_t),*size);
 	nynn_shmdt(shm);
 	return 0;
 }

@@ -17,6 +17,10 @@ struct link_t{
 	pthread_mutex_t rlock;
 	friend bool operator<(const link_t& lhs, const link_t &rhs);
 };
+struct hose_t{
+	int hoseno;
+	concurrent_queue<nynn_token_t*> rqueue;
+};
 
 struct task_t{
 	int tasktype;
@@ -35,7 +39,9 @@ enum{
 };
 
 extern link_t *links;
+extern hose_t *hoses;
 extern size_t links_max;
+extern size_t hose_max;
 extern size_t writer_num;
 extern size_t reader_num;
 extern char cfgpath[];

@@ -3,10 +3,13 @@
 #include<public.h>
 
 link_t *links;
+hose_t *hoses;
 size_t links_max;
+size_t hose_max;
 size_t writer_num;
 size_t reader_num;
 size_t shmmax;
+uint16_t port;
 enum{
 	CFGPATH_SIZE=64
 };
@@ -30,21 +33,23 @@ int main(int argc,char*argv[])
 	links_max=10;
 	writer_num=2;
 	reader_num=2;
+	hose_max=20;
+	port=30001;
 	memset(cfgpath,0,sizeof(CFGPATH_SIZE));
 	strncpy(cfgpath,"network.cfg",CFGPATH_SIZE);
 	
 	while(true){
-		int ch=getopt(argc,argv,":+l:r:w:f:h");
+		int ch=getopt(argc,argv,":+l:r:w:f:H:p:h");
 		if(ch=='?'){
 			cout<<"nynn_daemon:invalid option -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==':'){
 			cout<<"nynn_daemon:option requires argument -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==-1){
@@ -52,21 +57,27 @@ int main(int argc,char*argv[])
 		}else if (ch=='l'){
 			links_max=(atoi(optarg)<=0?links_max:atoi(optarg));
 		}else if (ch=='r'){
-			reader_num=(atoi(optarg)<=0?links_max:atoi(optarg));
+			reader_num=(atoi(optarg)<=0?reader_num:atoi(optarg));
 		}else if (ch=='w'){
-			writer_num=(atoi(optarg)<=0?links_max:atoi(optarg));
+			writer_num=(atoi(optarg)<=0?writer_num:atoi(optarg));
 		}else if (ch=='f'){
 			strncpy(cfgpath,optarg,CFGPATH_SIZE);
+		}else if (ch=='H'){
+			hose_max=(atoi(optarg)<0?hose_max:atoi(optarg));
+		}else if (ch=='p'){
+			port=(atoi(optarg)<0?port:atoi(optarg));
 		}else {
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
 			cout<<"nynn_daemon is a service for message multicast."<<endl;
 			cout<<"Options:"<<endl;
 			cout<<"\t-l the maximum number of links(default 10)"<<endl;
-			cout<<"\t-r the number of thread for reading message(default 2)"<<endl;
-			cout<<"\t-w the number of thread for writing message(default 2)"<<endl;
+			cout<<"\t-r the number of threads for reading message(default 2)"<<endl;
+			cout<<"\t-w the number of threads for writing message(default 2)"<<endl;
 			cout<<"\t-f the path of network configure file(default './network.cfg')"<<endl;
+			cout<<"\t-H the maximum number of hoses(default 20)"<<endl;
+			cout<<"\t-p the local listen port"<<endl;
 			cout<<"\t-h help nynn_daemon"<<endl;
-
+			exit(0);
 		}
 
 	}	
@@ -80,7 +91,8 @@ int main(int argc,char*argv[])
 	sigaction(SIGINT,&sa_intr,NULL);
 
 	links=new link_t[links_max];
-	
+	hoses=new hose_t[hose_max];	
+
 	linksize=loadconfig(cfgpath,links,links_max);
 	hostaddr=gethostaddr(hostname,HOSTNAME_SIZE);
 	info("hostname=%s\n",hostname);
@@ -132,7 +144,7 @@ int main(int argc,char*argv[])
 		pthread_create(writer_tid+i,NULL,writer,NULL);
 	}
 
-	Socket recipient("127.0.0.1",30001);
+	Socket recipient("127.0.0.1",port);
 	recipient.listen(200);
 
 	while(true){
@@ -337,17 +349,17 @@ void*  writer(void* args)
 
 		if (!link->wqueue.empty()){
 			nynn_token_t*req=link->wqueue.pop();
-			if (--req->nr_refcount==0){
+			if (--req->refcount==0){
 				if (delaycleaned!=NULL){
-					nynn_shmdt(delaycleaned->nr_shm);
+					nynn_shmdt(delaycleaned->shm);
 					delete delaycleaned;
 				}
 				delaycleaned=req;
 			}
-			info("SEND:%s",req->nr_shm+sizeof(size_t));
+			info("SEND:%s",req->shm+sizeof(size_t));
 			ssize_t size=0;
 			do{
-				ssize_t s=sock.send(req->nr_shm+size,req->nr_size-size);
+				ssize_t s=sock.send(req->shm+size,req->size-size);
 				if(s==-1 && errno!=EAGAIN){
 					error("sockfd=%d",sock.getsockfd());
 					exit(1);
@@ -356,7 +368,7 @@ void*  writer(void* args)
 				}else{//s==-1 && errno==EAGAIN
 					size+=0;
 				}
-			}while(size<req->nr_size);
+			}while(size<req->size);
 		}
 		pthread_mutex_unlock(wlock);
 	}
@@ -403,36 +415,38 @@ void*  reader(void* args)
 					size_t s=size-(p-buff);		
 					//boundary point breaks message size field into two.
 					if (s<sizeof(size_t)){
-						(*cached)->nr_size=s;
-						(*cached)->nr_shm=new char[sizeof(size_t)];
-						memcpy((*cached)->nr_shm,p,s);
+						(*cached)->size=s;
+						(*cached)->shm=new char[sizeof(size_t)];
+						memcpy((*cached)->shm,p,s);
 						break;
 					}
 					//boundary point breaks message body.
 					msgsize=*(size_t*)p;
 					info("msgsize=%d",msgsize);
-					(*cached)->nr_shmid=nynn_shmat(-1,(void**)&(*cached)->nr_shm,msgsize ,false);
+					(*cached)->shmid=nynn_shmat(-1,(void**)&(*cached)->shm,msgsize ,false);
 
-					if ((*cached)->nr_shmid==-1){
+					if ((*cached)->shmid==-1){
 						sock.close();
 						exit_on_error(errno,"failed to nynn_shmat");
 					}
 
-					(*cached)->nr_size=(s<msgsize?s:msgsize);
-					memcpy((*cached)->nr_shm,p,(*cached)->nr_size);
-					p+=(*cached)->nr_size;
+					(*cached)->size=(s<msgsize?s:msgsize);
+					memcpy((*cached)->shm,p,(*cached)->size);
+					p+=(*cached)->size;
 
 					//recv a integral msg
-					info("msgsize=%d,nr_size=%d",msgsize,(*cached)->nr_size);
-					if (msgsize==(*cached)->nr_size){
+					info("msgsize=%d,size=%d",msgsize,(*cached)->size);
+					if (msgsize==(*cached)->size){
 
 						info("RECV(shmid=%d size=%d):%s"
-								,(*cached)->nr_shmid
-								,(*cached)->nr_size
-								,(*cached)->nr_shm+sizeof(size_t));
+								,(*cached)->shmid
+								,(*cached)->size
+								,(*cached)->shm+sizeof(size_t));
 
-						nynn_shmdt((*cached)->nr_shm);
-						rqueue.push((*cached));
+						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
+						int hoseno=msg->hoseno;
+						nynn_shmdt((*cached)->shm);
+						hoses[hoseno].rqueue.push((*cached));
 						(*cached)=NULL;
 						//handle next msg
 						continue;
@@ -444,53 +458,55 @@ void*  reader(void* args)
 					}
 				}else{ 
 
-					fragsize=(*cached)->nr_size;
+					fragsize=(*cached)->size;
 					info("fragsize=%d",fragsize);
 					size_t s=size-(p-buff);
 					//boundary point breaks message size field into two.
 					//so can't get size of msg.
 					if (fragsize+s<sizeof(size_t)){
-						memcpy((*cached)->nr_shm+fragsize,p,s);	
-						(*cached)->nr_size+=s;
+						memcpy((*cached)->shm+fragsize,p,s);	
+						(*cached)->size+=s;
 						break;
 					}
 					//can get size of msg
 					if (fragsize<sizeof(size_t)&&fragsize+s>=sizeof(size_t)){
 						size_t s1=sizeof(size_t)-fragsize;
-						memcpy((*cached)->nr_shm+fragsize,p,s1);	
+						memcpy((*cached)->shm+fragsize,p,s1);	
 						p+=s1;
-						msgsize=*(size_t*)(*cached)->nr_shm;
-						delete (*cached)->nr_shm;
+						msgsize=*(size_t*)(*cached)->shm;
+						delete (*cached)->shm;
 
-						(*cached)->nr_shmid=nynn_shmat(-1,(void**)&(*cached)->nr_shm,msgsize,false);
+						(*cached)->shmid=nynn_shmat(-1,(void**)&(*cached)->shm,msgsize,false);
 
-						if ((*cached)->nr_shmid==-1){
+						if ((*cached)->shmid==-1){
 							sock.close();
 							exit_on_error(errno,"failed to nynn_shmat");
 						}
-						memcpy((*cached)->nr_shm,&msgsize,sizeof(size_t));
-						(*cached)->nr_size=sizeof(size_t);
+						memcpy((*cached)->shm,&msgsize,sizeof(size_t));
+						(*cached)->size=sizeof(size_t);
 					}
 					//handle incomplete msg
 					s=size-(p-buff);
-					msgsize=*(size_t*)(*cached)->nr_shm;
-					fragsize=(*cached)->nr_size;
+					msgsize=*(size_t*)(*cached)->shm;
+					fragsize=(*cached)->size;
 					remainsize=msgsize-fragsize;
 					if (remainsize<=s){
-						(*cached)->nr_size=msgsize;
-						memcpy((*cached)->nr_shm+fragsize,p,remainsize);
+						(*cached)->size=msgsize;
+						memcpy((*cached)->shm+fragsize,p,remainsize);
 						p+=remainsize;
 						info("RECV(shmid=%d size=%d):%s"
-								,(*cached)->nr_shmid
-								,(*cached)->nr_size
-								,(*cached)->nr_shm+sizeof(size_t));
+								,(*cached)->shmid
+								,(*cached)->size
+								,(*cached)->shm+sizeof(size_t));
 
-						nynn_shmdt((*cached)->nr_shm);
-						rqueue.push((*cached));
+						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
+						int hoseno=msg->hoseno;
+						nynn_shmdt((*cached)->shm);
+						hoses[hoseno].rqueue.push((*cached));
 						(*cached)=NULL;
 					}else{
-						(*cached)->nr_size+=s;
-						memcpy((*cached)->nr_shm+fragsize,p,s);
+						(*cached)->size+=s;
+						memcpy((*cached)->shm+fragsize,p,s);
 						break;
 					}	
 				}			
@@ -506,13 +522,13 @@ void* wresponder(void*args)
 
 	if (pthread_detach(pthread_self())!=0){
 		wresponse.close();
-		exit_on_error(errno,"failed to pthread_detach");
+		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
 	
 	struct sockaddr_in saddr;
 	if (sizeof(saddr)!=wresponse.recv((char*)&saddr,sizeof(saddr),MSG_WAITALL)){
 		wresponse.close();
-		exit_on_error(errno,"failed to recv client's port!");	
+		thread_exit_on_error(errno,"failed to recv client's port!");	
 	}
 	Socket rresponse;
 	if (rresponse.connect(saddr)!=0){
@@ -530,7 +546,7 @@ void* wresponder(void*args)
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
-		nynn_shmat(req->nr_shmid,(void**)&req->nr_shm,req->nr_size,true);
+		nynn_shmat(req->shmid,(void**)&req->shm,req->size,true);
 		
 		size_t num=0;
 		if (sizeof(num)!=wresponse.recv((char*)&num,sizeof(num),MSG_WAITALL)){
@@ -544,7 +560,7 @@ void* wresponder(void*args)
 			thread_exit_on_error(errno,"terminate  thread");
 		}
 		
-		req->nr_refcount=num;
+		req->refcount=num;
 
 		for (size_t i=0;i<num;i++){
 			size_t j=0;
@@ -554,7 +570,7 @@ void* wresponder(void*args)
 				links[j].wqueue.push(req);
 			}
 		}
-		info("WRITE(%d): %s",req->nr_size,req->nr_shm+sizeof(size_t));
+		info("WRITE(%d): %s",req->size,req->shm+sizeof(size_t));
 	}
 	return NULL;
 }
@@ -565,12 +581,22 @@ void* rresponder(void*args)
 
 	if (pthread_detach(pthread_self())!=0){
 		rresponse.close();
-		exit_on_error(errno,"failed to pthread_detach");
+		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
+	int hoseno=0;
+	if (sizeof(hoseno)!=rresponse.recv((char*)&hoseno,sizeof(int),MSG_WAITALL)){
+		rresponse.close();
+		thread_exit_on_error(errno,"failed to abtain hostno.");
+	}
+	if (hoseno>=hose_max){
+		rresponse.close();
+		thread_exit_on_error(errno,"hostno exceeds the max number of hosts.");
+	}
+	hose_t *hose=&hoses[hoseno];
 
 	if (sizeof(int)!=rresponse.send((char*)&shmmax,sizeof(int))){
 		rresponse.close();
-		exit_on_error(errno,"failed to pthread_detach");
+		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
 
 	while(true){
@@ -581,8 +607,8 @@ void* rresponder(void*args)
 		}
 
 		info("READ");
-		req=rqueue.pop();
-		info("READ(shmid=%d size=%d)",req->nr_shmid,req->nr_size);
+		req=hose->rqueue.pop();
+		info("READ(shmid=%d size=%d)",req->shmid,req->size);
 		if (sizeof(*req)!=rresponse.send((char*)req,sizeof(*req))){
 			rresponse.close();
 			thread_exit_on_error(errno,"terminate thread!");

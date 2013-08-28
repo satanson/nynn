@@ -27,11 +27,12 @@ enum{
 };
 
 struct nynn_token_t{
-	int 	nr_shmid;
-	size_t 	nr_size;
-	int 	nr_cmd;
-	int 	nr_refcount;
-	char*  	nr_shm;
+	int 	shmid;
+	size_t 	size;
+	int 	cmd;
+	int 	refcount;
+	int 	hoseno;
+	char*  	shm;
 };
 class nynn_tap_t{
 	private:
@@ -39,15 +40,19 @@ class nynn_tap_t{
 		pthread_mutex_t rlock;
 		int wfd;
 		int rfd;
+		int hoseno;
 		size_t shmmax;
 	public:
-		nynn_tap_t();
+		nynn_tap_t(uint16_t port,int hoseno);
 		~nynn_tap_t();
 
 		int read(char**buff,size_t *size);
 		int write(uint32_t *inetaddr, size_t num, char*buff,size_t size);
 };
-
+struct nynn_msg_t{
+	size_t msgsize;
+	int	   hoseno;
+};
 int nynn_shmat(int shmid, void**shmaddr, size_t size,bool removal);
 int nynn_shmdt(const void*shmaddr);
 
