@@ -61,5 +61,44 @@ void* writer(void*args);
 void* reader(void*args);
 void* wresponder(void*args);
 void* rresponder(void*args);
+class shm_manager_t{
+	private:
+		size_t shmseg;
+		size_t count;
+		pthread_mutex_t lock;
+		pthread_cond_t notempty;
+		pthread_cond_t notfull;
+	public:
+		shm_manager_t(size_t shmseg){
+			this->shmseg=shmseg;
+			this->count=0;
+			pthread_mutex_init(&this->lock,NULL);
+			pthread_cond_init(&this->notfull,NULL);
+			pthread_cond_init(&this->notempty,NULL);
+		}
+
+		int require(int shmid,void**shmaddr,size_t size,bool removal){
+			int retval;
+			pthread_mutex_lock(&this->lock);
+			while(this->count==this->shmseg)
+				pthread_cond_wait(&this->notfull,&this->lock);
+			retval=nynn_shmat(shmid,shmaddr,size,removal);
+			this->count++;
+			pthread_mutex_unlock(&this->lock);
+			pthread_cond_broadcast(&this->notempty);
+			return retval;
+		}
+		int release(const void*shmaddr){
+			int retval=0;
+			pthread_mutex_lock(&this->lock);
+			while(this->count==0)
+				pthread_cond_wait(&this->notempty,&this->lock);
+			retval=nynn_shmdt(shmaddr);
+			this->count--;
+			pthread_mutex_unlock(&this->lock);
+			pthread_cond_broadcast(&this->notfull);
+		}
+
+};
 #endif
 

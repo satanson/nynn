@@ -9,7 +9,10 @@ size_t hose_max;
 size_t writer_num;
 size_t reader_num;
 size_t shmmax;
+size_t shmseg;
 uint16_t port;
+size_t	rcvbuf;
+size_t  sndbuf;
 enum{
 	CFGPATH_SIZE=64
 };
@@ -22,6 +25,8 @@ concurrent_queue<task_t*> wtask_queue;
 concurrent_queue<task_t*> rtask_queue;
 nynn_token_t* delaycleaned; 
 
+shm_manager_t *shmmgr;
+
 void intr_handler(int signo)
 {
 	exit(signo);
@@ -29,6 +34,11 @@ void intr_handler(int signo)
 
 int main(int argc,char*argv[])
 {
+	struct shminfo info;
+	shmctl(0,IPC_INFO,(struct shmid_ds*)&info);
+	shmmax=info.shmmax;
+	shmseg=info.shmseg/2;
+
 	//default config
 	links_max=10;
 	writer_num=2;
@@ -37,19 +47,21 @@ int main(int argc,char*argv[])
 	port=30001;
 	memset(cfgpath,0,sizeof(CFGPATH_SIZE));
 	strncpy(cfgpath,"network.cfg",CFGPATH_SIZE);
-	
+	rcvbuf=shmmax;
+	sndbuf=shmmax;
+
 	while(true){
-		int ch=getopt(argc,argv,":+l:r:w:f:H:p:h");
+		int ch=getopt(argc,argv,":+l:r:w:f:H:p:s:R:n:h");
 		if(ch=='?'){
 			cout<<"nynn_daemon:invalid option -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==':'){
 			cout<<"nynn_daemon:option requires argument -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==-1){
@@ -64,10 +76,16 @@ int main(int argc,char*argv[])
 			strncpy(cfgpath,optarg,CFGPATH_SIZE);
 		}else if (ch=='H'){
 			hose_max=(atoi(optarg)<0?hose_max:atoi(optarg));
+		}else if (ch=='s'){
+			sndbuf=(atoi(optarg)<0?sndbuf:atoi(optarg));
+		}else if (ch=='R'){
+			rcvbuf=(atoi(optarg)<0?sndbuf:atoi(optarg));
 		}else if (ch=='p'){
 			port=(atoi(optarg)<0?port:atoi(optarg));
+		}else if (ch=='n'){
+			shmseg=(atoi(optarg)<0?shmseg:atoi(optarg));
 		}else {
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"nynn_daemon is a service for message multicast."<<endl;
 			cout<<"Options:"<<endl;
 			cout<<"\t-l the maximum number of links(default 10)"<<endl;
@@ -75,16 +93,16 @@ int main(int argc,char*argv[])
 			cout<<"\t-w the number of threads for writing message(default 2)"<<endl;
 			cout<<"\t-f the path of network configure file(default './network.cfg')"<<endl;
 			cout<<"\t-H the maximum number of hoses(default 20)"<<endl;
-			cout<<"\t-p the local listen port"<<endl;
+			cout<<"\t-p the local listen port(default 30001)"<<endl;
+			cout<<"\t-s the sending buffer size(default shmmax)"<<endl;
+			cout<<"\t-R the receiving buffer size(default shmmax)"<<endl;
+			cout<<"\t-n the maximum number of msgs(default shmmax)"<<endl;
 			cout<<"\t-h help nynn_daemon"<<endl;
 			exit(0);
 		}
 
 	}	
 
-	struct shminfo info;
-	shmctl(0,IPC_INFO,(struct shmid_ds*)&info);
-	shmmax=info.shmmax;
 
 	struct sigaction sa_intr;
 	sa_intr.sa_handler=intr_handler;
@@ -92,6 +110,7 @@ int main(int argc,char*argv[])
 
 	links=new link_t[links_max];
 	hoses=new hose_t[hose_max];	
+	shmmgr=new shm_manager_t(shmseg);
 
 	linksize=loadconfig(cfgpath,links,links_max);
 	hostaddr=gethostaddr(hostname,HOSTNAME_SIZE);
@@ -223,6 +242,12 @@ void* connector(void*args)
 
 	link->rfd=sock.getsockfd();
 	setNonBlocking(link->rfd);
+	if (setsockopt(link->rfd,SOL_SOCKET,SO_SNDBUF,&sndbuf,sizeof(sndbuf))!=0){
+		exit_on_error(errno,"failed to set sndbuf!");
+	}
+	if (setsockopt(link->rfd,SOL_SOCKET,SO_RCVBUF,&rcvbuf,sizeof(rcvbuf))!=0){
+		exit_on_error(errno,"failed to set rcvbuf!");
+	}
 	link->wfd=dup(link->rfd);
 	info("host:%s rfd:%d wfd:%d",link->hostname,link->rfd,link->wfd);
 	char buff[INET_ADDRSTRLEN];
@@ -256,6 +281,12 @@ void* acceptor(void*args)
 			exit_on_error(0,"failed to find link item");
 		}
 		links[j].wfd=connSock.getsockfd();
+		if (setsockopt(links[j].wfd,SOL_SOCKET,SO_SNDBUF,&sndbuf,sizeof(sndbuf))!=0){
+			exit_on_error(errno,"failed to set sndbuf!");
+		}
+		if (setsockopt(links[j].wfd,SOL_SOCKET,SO_RCVBUF,&rcvbuf,sizeof(rcvbuf))!=0){
+			exit_on_error(errno,"failed to set rcvbuf!");
+		}
 		setNonBlocking(links[j].wfd);
 		links[j].rfd=dup(links[j].wfd);
 		info("host:%s rfd:%d wfd:%d",links[j].hostname,links[j].rfd,links[j].wfd);
@@ -351,7 +382,7 @@ void*  writer(void* args)
 			nynn_token_t*req=link->wqueue.pop();
 			if (--req->refcount==0){
 				if (delaycleaned!=NULL){
-					nynn_shmdt(delaycleaned->shm);
+					shmmgr->release(delaycleaned->shm);
 					delete delaycleaned;
 				}
 				delaycleaned=req;
@@ -423,11 +454,11 @@ void*  reader(void* args)
 					//boundary point breaks message body.
 					msgsize=*(size_t*)p;
 					info("msgsize=%d",msgsize);
-					(*cached)->shmid=nynn_shmat(-1,(void**)&(*cached)->shm,msgsize ,false);
+					(*cached)->shmid=shmmgr->require(-1,(void**)&(*cached)->shm,msgsize ,false);
 
 					if ((*cached)->shmid==-1){
 						sock.close();
-						exit_on_error(errno,"failed to nynn_shmat");
+						exit_on_error(errno,"failed to shmmgr->require");
 					}
 
 					(*cached)->size=(s<msgsize?s:msgsize);
@@ -445,7 +476,7 @@ void*  reader(void* args)
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
 						int hoseno=msg->hoseno;
-						nynn_shmdt((*cached)->shm);
+						shmmgr->release((*cached)->shm);
 						hoses[hoseno].rqueue.push((*cached));
 						(*cached)=NULL;
 						//handle next msg
@@ -476,11 +507,11 @@ void*  reader(void* args)
 						msgsize=*(size_t*)(*cached)->shm;
 						delete (*cached)->shm;
 
-						(*cached)->shmid=nynn_shmat(-1,(void**)&(*cached)->shm,msgsize,false);
+						(*cached)->shmid=shmmgr->require(-1,(void**)&(*cached)->shm,msgsize,false);
 
 						if ((*cached)->shmid==-1){
 							sock.close();
-							exit_on_error(errno,"failed to nynn_shmat");
+							exit_on_error(errno,"failed to shmmgr->require");
 						}
 						memcpy((*cached)->shm,&msgsize,sizeof(size_t));
 						(*cached)->size=sizeof(size_t);
@@ -501,7 +532,7 @@ void*  reader(void* args)
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
 						int hoseno=msg->hoseno;
-						nynn_shmdt((*cached)->shm);
+						shmmgr->release((*cached)->shm);
 						hoses[hoseno].rqueue.push((*cached));
 						(*cached)=NULL;
 					}else{
@@ -518,13 +549,13 @@ void*  reader(void* args)
 
 void* wresponder(void*args)
 {
-	Socket wresponse((int)args);
+	Socket wresponse((intptr_t)args);
 
 	if (pthread_detach(pthread_self())!=0){
 		wresponse.close();
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
-	
+
 	struct sockaddr_in saddr;
 	if (sizeof(saddr)!=wresponse.recv((char*)&saddr,sizeof(saddr),MSG_WAITALL)){
 		wresponse.close();
@@ -546,20 +577,20 @@ void* wresponder(void*args)
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
-		nynn_shmat(req->shmid,(void**)&req->shm,req->size,true);
-		
+		shmmgr->require(req->shmid,(void**)&req->shm,req->size,true);
+
 		size_t num=0;
 		if (sizeof(num)!=wresponse.recv((char*)&num,sizeof(num),MSG_WAITALL)){
 			wresponse.close();
 			thread_exit_on_error(errno,"terminate  thread");
 		}	
-		
+
 		uint32_t *inetaddr=new uint32_t[num];
 		if (sizeof(uint32_t)*num!=wresponse.recv((char*)inetaddr,sizeof(uint32_t)*num,MSG_WAITALL)){
 			wresponse.close();
 			thread_exit_on_error(errno,"terminate  thread");
 		}
-		
+
 		req->refcount=num;
 
 		for (size_t i=0;i<num;i++){
@@ -577,7 +608,7 @@ void* wresponder(void*args)
 
 void* rresponder(void*args)
 {
-	Socket rresponse((int)args);
+	Socket rresponse((intptr_t)args);
 
 	if (pthread_detach(pthread_self())!=0){
 		rresponse.close();
@@ -594,7 +625,7 @@ void* rresponder(void*args)
 	}
 	hose_t *hose=&hoses[hoseno];
 
-	if (sizeof(int)!=rresponse.send((char*)&shmmax,sizeof(int))){
+	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t))){
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
