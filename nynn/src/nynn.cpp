@@ -37,6 +37,48 @@ int nynn_shmdt(const void*shmaddr)
 	return 0;
 }
 
+nynn_tap_t::nynn_tap_t(const char* msgid)
+{
+	assert(strlen(msgid)<=MSGIDSIZE);	
+	pthread_mutex_init(&this->wlock,NULL);
+	pthread_mutex_init(&this->rlock,NULL);
+	Socket wso;
+	if (wso.connect("127.0.0.1",30001)!=0){
+		exit_on_error(errno,"failed to connect nynn_daemon for writting!");
+	}
+	
+	Socket listenrso("127.0.0.1",INADDR_ANY);
+	listenrso.listen(1);
+	
+	struct sockaddr_in saddr;
+	socklen_t len=sizeof(saddr);
+	listenrso.getsockname(&saddr,&len);
+	char host[INET_ADDRSTRLEN];
+	listenrso.getlocalhost(host);
+	info("sockaddr=%s:%d",host,listenrso.getlocalport());
+	if (sizeof(saddr)!=wso.send((char*)&saddr,sizeof(saddr))){
+		exit_on_error(errno,"failed to send reading port to nynn_daemon!");
+	}
+	
+	Socket rso=listenrso.accept();
+	char msgid_buf[MSGIDSIZE];
+	memset(msgid_buf,0,MSGIDSIZE);
+	strcpy(msgid_buf,msgid);
+
+	if (MSGIDSIZE!=rso.send(msgid_buf,MSGIDSIZE)){
+		exit_on_error(errno,"failed to send msgid to nynn_daemon!");
+	}
+	
+	if (sizeof(size_t)!=rso.recv((char*)&this->shmmax,sizeof(size_t),MSG_WAITALL)){
+		exit_on_error(errno,"failed to connect nynn_daemon for reading!");
+	}
+	
+	info("shmmax=%d",this->shmmax);
+	this->wfd=wso.getsockfd();
+	this->rfd=rso.getsockfd();
+}
+
+/*
 nynn_tap_t::nynn_tap_t(uint16_t port,int hoseno)
 {
 	this->hoseno=hoseno;
@@ -74,6 +116,7 @@ nynn_tap_t::nynn_tap_t(uint16_t port,int hoseno)
 	this->wfd=wso.getsockfd();
 	this->rfd=rso.getsockfd();
 }
+*/
 
 nynn_tap_t::~nynn_tap_t()
 {
@@ -83,6 +126,59 @@ nynn_tap_t::~nynn_tap_t()
 	pthread_mutex_destroy(&this->wlock);
 }
 
+
+int nynn_tap_t::infuse(const char*host,const char*msgid,const char*msgbdy,size_t msgbdysize)
+{
+	assert(strlen(host)<MSGHOSTSIZE);
+	assert(strlen(msgid)<MSGIDSIZE);
+
+	char *shm;
+	size_t shmsize=sizeof(size_t)+MSGHOSTSIZE+MSGIDSIZE+msgbdysize;
+	
+	if(shmsize>shmmax){
+		error("too big message(max=%d)",this->shmmax);
+		return -1;
+	}
+	int shmid=nynn_shmat(-1,(void**)&shm,shmsize,false);
+	if(shmid==-1){
+		error("failed to nynn_shmat!");
+		return -1;
+	}
+
+	nynn_msg_t *msg=(nynn_msg_t*)shm;
+	msg->msghdr.msgsize=shmsize;
+	strcpy(msg->msghdr.host,host);
+	strcpy(msg->msghdr.msgid,msgid);
+	memcpy(msg->msgbdy,msgbdy,msgbdysize);
+
+	nynn_shmdt(shm);
+	
+	nynn_token_t req={shmid,shmsize,WRITE,0,NULL};
+	if (inet_pton(AF_INET,host,&req.host)!=1){
+		error("failed to convert a string to AF_INET address");
+	}
+
+	pthread_mutex_lock(&this->wlock);
+	Socket so(this->wfd);
+	if (sizeof(req)!=so.send((char*)&req,sizeof(req))){
+		error("faild to send");
+		pthread_mutex_unlock(&this->wlock);
+		return -1;
+	}
+	pthread_mutex_unlock(&this->wlock);
+	return 0;
+}
+
+int nynn_tap_t::infuse(const char *msg,size_t msgsize)
+{
+	const char*host=msg;
+	const char*msgid=msg+MSGHOSTSIZE;
+	const char*msgbdy=msgid+MSGIDSIZE;
+	int msgbdysize=msgsize-MSGHOSTSIZE-MSGIDSIZE;
+	return infuse(host,msgid,msgbdy,msgbdysize);
+}
+
+/*
 int nynn_tap_t::write(uint32_t *inetaddr,size_t num,char*buff,size_t size)
 {
 	char *shm;
@@ -117,8 +213,37 @@ int nynn_tap_t::write(uint32_t *inetaddr,size_t num,char*buff,size_t size)
 	pthread_mutex_unlock(&this->wlock);
 	return 0;
 }
+*/
 
-
+int nynn_tap_t::effuse(char**msgbdy,size_t *msgbdysize)
+{
+	Socket so(this->rfd);
+	nynn_token_t tok;	
+	tok.cmd=READ;
+	pthread_mutex_lock(&this->rlock);
+	if (sizeof(tok)!=so.send((char*)&tok,sizeof(tok))){
+		error("failed to send");
+		return -1;
+	}
+	if (sizeof(tok)!=so.recv((char*)&tok,sizeof(tok))){
+		error("failed to recv");
+		return -1;
+	}
+	pthread_mutex_unlock(&this->rlock);
+	
+	char *shm;
+	if(nynn_shmat(tok.shmid,(void**)&shm,tok.size,true)==-1){
+		error("failed to nynn_shmat");
+		return -1;
+	}
+	nynn_msg_t *msg=(nynn_msg_t*)shm;
+	*msgbdysize=msg->msghdr.msgsize-sizeof(msg->msghdr);
+	*msgbdy=new char[*msgbdysize];
+	memcpy(*msgbdy,msg->msgbdy,*msgbdysize);
+	nynn_shmdt(shm);
+	return 0;
+}
+/*
 int nynn_tap_t::read(char**buff,size_t*size)
 {
 	Socket so(this->rfd);
@@ -147,13 +272,26 @@ int nynn_tap_t::read(char**buff,size_t*size)
 	nynn_shmdt(shm);
 	return 0;
 }
-
+*/
+/*
 int nynn_write(nynn_tap_t*tap,uint32_t*inetaddr,size_t num,char*buff,size_t len)
 {
 	return tap->write(inetaddr,num,buff,len);
 }
+*/
 
+/*
 int nynn_read(nynn_tap_t*tap,char**buff,size_t*len)
 {
 	return tap->read(buff,len);
+}
+*/
+int tap_infuse(nynn_tap_t *tap,const char*msg,size_t msgsize)
+{
+	return tap->infuse(msg,msgsize);
+}
+
+int tap_effuse(nynn_tap_t *tap,char**msgbdy,size_t *msgbdysize)
+{
+	return tap->effuse(msgbdy,msgbdysize);
 }

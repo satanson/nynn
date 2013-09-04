@@ -4,24 +4,12 @@
 #include<socket.h>
 #include<nynn.h>
 #include<concurrent_queue.h>
-
-struct link_t{
-	char hostname[32];
-	uint32_t hostaddr;
-	uint16_t port;
-	int rfd;
-	int wfd;
-	nynn_token_t *cachedfragment;
-	concurrent_queue<nynn_token_t*> wqueue;
-	pthread_mutex_t wlock;
-	pthread_mutex_t rlock;
-	friend bool operator<(const link_t& lhs, const link_t &rhs);
-};
-struct hose_t{
-	int hoseno;
-	concurrent_queue<nynn_token_t*> rqueue;
-};
-
+struct task_t;
+struct link_t;
+struct hose_t;
+struct shm_manager_t;
+typedef concurrent_queue<nynn_token_t*> token_queue_t;
+typedef concurrent_queue<task_t*> task_queue_t;
 struct task_t{
 	int tasktype;
 	int sockfd;
@@ -31,6 +19,76 @@ struct task_t{
 	}
 };
 
+struct link_t{
+	char hostname[32];
+	uint32_t hostaddr;
+	uint16_t port;
+	int rfd;
+	int wfd;
+	nynn_token_t *cachedfragment;
+	token_queue_t wqueue;
+	pthread_mutex_t wlock;
+	pthread_mutex_t rlock;
+	friend bool operator<(const link_t& lhs, const link_t &rhs);
+};
+
+
+
+struct hose_t{
+	private:
+		pthread_mutex_t lock;
+		typedef map<const char*,token_queue_t*> hosemap_t;
+		typedef hosemap_t::iterator hosemap_iterator_t;
+		typedef pair<const char*,token_queue_t*> hosemap_pair_t;
+		hosemap_t hosemap;
+	public:
+		hose_t()
+		{
+			pthread_mutex_init(&lock,NULL);
+		}
+
+		~hose_t()
+		{
+			pthread_mutex_destroy(&lock);
+			hosemap_iterator_t iter;
+			for(iter=hosemap.begin();iter!=hosemap.end();iter++){
+				delete iter->first;
+				delete iter->second;
+			}
+		}
+
+		token_queue_t* add(const char*key)
+		{
+			hosemap_iterator_t iter;
+			token_queue_t*q;
+			
+			pthread_mutex_lock(&lock);
+			
+			iter=hosemap.find(key);
+			if (iter==hosemap.end()){
+			   	q=new token_queue_t;
+				hosemap.insert(hosemap_pair_t(key,q));
+			}else{
+			   	q=iter->second;
+			}
+			pthread_mutex_unlock(&lock);
+			
+			return q;
+		}
+
+		void remove(const char *key)
+		{
+			hosemap_iterator_t iter;
+			pthread_mutex_lock(&lock);
+			iter=hosemap.find(key);
+			if(iter!=hosemap.end()){
+				hosemap.erase(key);
+			}
+			pthread_mutex_lock(&lock);
+		}
+};
+
+
 int loadconfig(const char*cfgpath,link_t *links,size_t size);
 
 enum{
@@ -39,7 +97,7 @@ enum{
 };
 
 extern link_t *links;
-extern hose_t *hoses;
+extern hose_t hoses;
 extern size_t links_max;
 extern size_t hose_max;
 extern size_t writer_num;
@@ -49,10 +107,10 @@ extern char cfgpath[];
 extern size_t linksize;
 extern char hostname[];
 extern uint32_t hostaddr;
-extern concurrent_queue<nynn_token_t*> rqueue;
+extern token_queue_t rqueue;
 
-extern concurrent_queue<task_t*> wtask_queue;
-extern concurrent_queue<task_t*> rtask_queue;
+extern task_queue_t wtask_queue;
+extern task_queue_t rtask_queue;
 
 void* connector(void*args);
 void* acceptor(void*args);

@@ -23,17 +23,19 @@ class inet4addr{
 enum{
 	WRITE=0,
 	READ=1,
-	CONTROL=2
+	CONTROL=2,
+	MSGIDSIZE=40,
+	MSGHOSTSIZE=16
 };
 
 struct nynn_token_t{
 	int 	shmid;
 	size_t 	size;
 	int 	cmd;
-	int 	refcount;
-	int 	hoseno;
+	uint32_t host;
 	char*  	shm;
 };
+
 class nynn_tap_t{
 	private:
 		pthread_mutex_t wlock;
@@ -42,20 +44,32 @@ class nynn_tap_t{
 		int rfd;
 		int hoseno;
 		size_t shmmax;
+		char msgid[MSGIDSIZE];
 	public:
-		nynn_tap_t(uint16_t port,int hoseno);
+		//nynn_tap_t(uint16_t port,int hoseno);
+		nynn_tap_t(const char*msgid);
 		~nynn_tap_t();
 
-		int read(char**buff,size_t *size);
-		int write(uint32_t *inetaddr, size_t num, char*buff,size_t size);
+		//int read(char**buff,size_t *size);
+		//int write(uint32_t *inetaddr, size_t num, char*buff,size_t size);
+		int infuse(const char*host,const char*msgid,const char*msgbdy,size_t msgbdysize);
+		int infuse(const char*msg,size_t msgsize);
+		int effuse(char**msgbdy,size_t *msgbdysize);
 };
 struct nynn_msg_t{
+	struct {
 	size_t msgsize;
-	int	   hoseno;
+    char   host[MSGHOSTSIZE];
+	char   msgid[MSGIDSIZE];
+	}msghdr;
+	char   msgbdy[1];
 };
 int nynn_shmat(int shmid, void**shmaddr, size_t size,bool removal);
 int nynn_shmdt(const void*shmaddr);
 
-int nynn_write(nynn_tap_t *tap,uint32_t *inetaddr,size_t num, char*buff,size_t size);
-int nynn_read(nynn_tap_t *tap,char**buff,size_t *size);
+//int nynn_write(nynn_tap_t *tap,uint32_t *inetaddr,size_t num, char*buff,size_t size);
+int tap_infuse(nynn_tap_t *tap,const char*msg,size_t msgsize);
+//int nynn_read(nynn_tap_t *tap,char**buff,size_t *size);
+int tap_effuse(nynn_tap_t *tap,const char**msgbdy,size_t *msgbdysize);
+
 #endif

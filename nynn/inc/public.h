@@ -4,6 +4,7 @@
 #include<iostream>
 #include<fstream>
 #include<algorithm>
+#include<map>
 
 #include<cerrno>
 #include<cstdlib>
@@ -11,6 +12,7 @@
 #include<ctime>
 #include<csignal>
 #include<cstdarg>
+#include<cassert>
 
 #include<pthread.h>
 

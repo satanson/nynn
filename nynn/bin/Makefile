@@ -5,6 +5,8 @@ endif
 CXXFLAGS+= -I ../inc -lpthread -lrt $(DEBUG)
 nynn_daemon:nynn_daemon.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+aligndemo:aligndemo.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 nynn_serv:nynn_serv.o public.o socket.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 nynn_cli:nynn_cli.o boss.o public.o socket.o
@@ -24,6 +26,10 @@ serv:serv.o public.o socket.o nynn.o
 queue_demo:queue_demo.o public.o 
 	$(CXX) $(CXXFLAGS) -o $@ $^
 nynn_cli_read:nynn_cli_read.o public.o socket.o nynn.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+nynn_udp_read:nynn_udp_read.o public.o socket.o nynn.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+nynn_udp_write:nynn_udp_write.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 nynn_cli_write:nynn_cli_write.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^

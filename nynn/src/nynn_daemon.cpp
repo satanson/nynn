@@ -3,7 +3,7 @@
 #include<public.h>
 
 link_t *links;
-hose_t *hoses;
+hose_t hoses;
 size_t links_max;
 size_t hose_max;
 size_t writer_num;
@@ -20,9 +20,9 @@ char  cfgpath[CFGPATH_SIZE];
 size_t linksize;
 char hostname[HOSTNAME_SIZE];
 uint32_t hostaddr;
-concurrent_queue<nynn_token_t*> rqueue;
-concurrent_queue<task_t*> wtask_queue;
-concurrent_queue<task_t*> rtask_queue;
+token_queue_t rqueue;
+task_queue_t wtask_queue;
+task_queue_t rtask_queue;
 nynn_token_t* delaycleaned; 
 
 shm_manager_t *shmmgr;
@@ -43,7 +43,6 @@ int main(int argc,char*argv[])
 	links_max=10;
 	writer_num=2;
 	reader_num=2;
-	hose_max=20;
 	port=30001;
 	memset(cfgpath,0,sizeof(CFGPATH_SIZE));
 	strncpy(cfgpath,"network.cfg",CFGPATH_SIZE);
@@ -51,17 +50,17 @@ int main(int argc,char*argv[])
 	sndbuf=shmmax;
 
 	while(true){
-		int ch=getopt(argc,argv,":+l:r:w:f:H:p:s:R:n:h");
+		int ch=getopt(argc,argv,":+l:r:w:f:p:s:R:n:h");
 		if(ch=='?'){
 			cout<<"nynn_daemon:invalid option -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==':'){
 			cout<<"nynn_daemon:option requires argument -- '"
 				<<(char)optopt<<"'"<<endl;
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"Try \"nynn_daemon -h for more help\""<<endl;
 			exit(0);
 		}else if (ch==-1){
@@ -74,8 +73,6 @@ int main(int argc,char*argv[])
 			writer_num=(atoi(optarg)<=0?writer_num:atoi(optarg));
 		}else if (ch=='f'){
 			strncpy(cfgpath,optarg,CFGPATH_SIZE);
-		}else if (ch=='H'){
-			hose_max=(atoi(optarg)<0?hose_max:atoi(optarg));
 		}else if (ch=='s'){
 			sndbuf=(atoi(optarg)<0?sndbuf:atoi(optarg));
 		}else if (ch=='R'){
@@ -85,14 +82,13 @@ int main(int argc,char*argv[])
 		}else if (ch=='n'){
 			shmseg=(atoi(optarg)<0?shmseg:atoi(optarg));
 		}else {
-			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-H num] [-p port] [-s num] [-R num] [-n num]"<<endl;
+			cout<<"Usage:nynn_daemon [-f file] [-r num] [-w num] [-l num] [-p port] [-s num] [-R num] [-n num]"<<endl;
 			cout<<"nynn_daemon is a service for message multicast."<<endl;
 			cout<<"Options:"<<endl;
 			cout<<"\t-l the maximum number of links(default 10)"<<endl;
 			cout<<"\t-r the number of threads for reading message(default 2)"<<endl;
 			cout<<"\t-w the number of threads for writing message(default 2)"<<endl;
 			cout<<"\t-f the path of network configure file(default './network.cfg')"<<endl;
-			cout<<"\t-H the maximum number of hoses(default 20)"<<endl;
 			cout<<"\t-p the local listen port(default 30001)"<<endl;
 			cout<<"\t-s the sending buffer size(default shmmax)"<<endl;
 			cout<<"\t-R the receiving buffer size(default shmmax)"<<endl;
@@ -109,7 +105,6 @@ int main(int argc,char*argv[])
 	sigaction(SIGINT,&sa_intr,NULL);
 
 	links=new link_t[links_max];
-	hoses=new hose_t[hose_max];	
 	shmmgr=new shm_manager_t(shmseg);
 
 	linksize=loadconfig(cfgpath,links,links_max);
@@ -171,7 +166,6 @@ int main(int argc,char*argv[])
 		pthread_t tid;
 		pthread_create(&tid,NULL,wresponder,(void*)response.getsockfd());
 	}
-
 	return 0;
 }
 
@@ -380,14 +374,14 @@ void*  writer(void* args)
 
 		if (!link->wqueue.empty()){
 			nynn_token_t*req=link->wqueue.pop();
-			if (--req->refcount==0){
-				if (delaycleaned!=NULL){
-					shmmgr->release(delaycleaned->shm);
-					delete delaycleaned;
-				}
-				delaycleaned=req;
+			//if (--req->refcount==0){
+			if (delaycleaned!=NULL){
+				shmmgr->release(delaycleaned->shm);
+				delete delaycleaned;
 			}
-			info("SEND:%s",req->shm+sizeof(size_t));
+			delaycleaned=req;
+			//}
+			info("SEND(%d)",req->size);
 			ssize_t size=0;
 			do{
 				ssize_t s=sock.send(req->shm+size,req->size-size);
@@ -475,15 +469,14 @@ void*  reader(void* args)
 								,(*cached)->shm+sizeof(size_t));
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
-						int hoseno=msg->hoseno;
+						token_queue_t *rqueue=hoses.add(msg->msghdr.msgid);
 						shmmgr->release((*cached)->shm);
-						hoses[hoseno].rqueue.push((*cached));
+						rqueue->push((*cached));
 						(*cached)=NULL;
 						//handle next msg
 						continue;
 					}else{
-						info("TID=%d::finish handling buff!"
-								,pthread_self());
+						info("finish handling buff!",pthread_self());
 						//finish handling buff
 						break;
 					}
@@ -531,9 +524,10 @@ void*  reader(void* args)
 								,(*cached)->shm+sizeof(size_t));
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
-						int hoseno=msg->hoseno;
+						token_queue_t *rqueue=hoses.add(msg->msghdr.msgid);
 						shmmgr->release((*cached)->shm);
-						hoses[hoseno].rqueue.push((*cached));
+						rqueue->push((*cached));
+						(*cached)=NULL;
 						(*cached)=NULL;
 					}else{
 						(*cached)->size+=s;
@@ -579,29 +573,13 @@ void* wresponder(void*args)
 
 		shmmgr->require(req->shmid,(void**)&req->shm,req->size,true);
 
-		size_t num=0;
-		if (sizeof(num)!=wresponse.recv((char*)&num,sizeof(num),MSG_WAITALL)){
-			wresponse.close();
-			thread_exit_on_error(errno,"terminate  thread");
-		}	
-
-		uint32_t *inetaddr=new uint32_t[num];
-		if (sizeof(uint32_t)*num!=wresponse.recv((char*)inetaddr,sizeof(uint32_t)*num,MSG_WAITALL)){
-			wresponse.close();
-			thread_exit_on_error(errno,"terminate  thread");
+		size_t j=0;
+		while(j<linksize && links[j].hostaddr!=req->host)j++;
+		if (j<linksize){
+			info("push req to %s",links[j].hostname);
+			links[j].wqueue.push(req);
 		}
-
-		req->refcount=num;
-
-		for (size_t i=0;i<num;i++){
-			size_t j=0;
-			while(j<linksize && links[j].hostaddr!=inetaddr[i])j++;
-			if (j<linksize){
-				info("push req to %s",links[j].hostname);
-				links[j].wqueue.push(req);
-			}
-		}
-		info("WRITE(%d): %s",req->size,req->shm+sizeof(size_t));
+		info("WRITE(%d)",req->size);
 	}
 	return NULL;
 }
@@ -614,19 +592,26 @@ void* rresponder(void*args)
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
-	int hoseno=0;
-	if (sizeof(hoseno)!=rresponse.recv((char*)&hoseno,sizeof(int),MSG_WAITALL)){
+
+	char *msgid=new char[MSGIDSIZE];
+	memset(msgid,0,MSGIDSIZE);
+	
+	if (sizeof(msgid)!=rresponse.recv(msgid,sizeof(msgid),MSG_WAITALL)){
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to abtain hostno.");
 	}
-	if (hoseno>=hose_max){
+	if (!(strlen(msgid)<MSGIDSIZE)){
 		rresponse.close();
-		thread_exit_on_error(errno,"hostno exceeds the max number of hosts.");
+		thread_exit_on_error(errno,"msgid exceeds its maximum size");
 	}
-	hose_t *hose=&hoses[hoseno];
+	
+	token_queue_t *rqueue=hoses.add(msgid);
 
 	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t))){
 		rresponse.close();
+		hoses.remove(msgid);
+		delete msgid;
+		delete rqueue;
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
 
@@ -634,14 +619,20 @@ void* rresponder(void*args)
 		nynn_token_t *req=new nynn_token_t;
 		if (sizeof(*req)!=rresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){
 			rresponse.close();
+			hoses.remove(msgid);
+			delete msgid;
+			delete rqueue;
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
 		info("READ");
-		req=hose->rqueue.pop();
+		req=rqueue->pop();
 		info("READ(shmid=%d size=%d)",req->shmid,req->size);
 		if (sizeof(*req)!=rresponse.send((char*)req,sizeof(*req))){
 			rresponse.close();
+			hoses.remove(msgid);
+			delete msgid;
+			delete rqueue;
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 		delete req;
