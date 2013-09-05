@@ -75,5 +75,18 @@ enum{
 	__exit_on_error(cerr,__FILE__,__LINE__,__FUNCTION__,errnum,msg,THREAD)
 #define exit_on_error(errnum,msg) \
 	__exit_on_error(cerr,__FILE__,__LINE__,__FUNCTION__,errnum,msg,PROCESS)
+class getlock_t{
+	pthread_mutex_t *lock;
+public:
+	getlock_t(pthread_mutex_t*lock)
+	{
+
+		this->lock=lock;
+		pthread_mutex_lock(this->lock);
+	}
+	~getlock_t(){
+		pthread_mutex_unlock(this->lock);
+	}
+};
 
 #endif

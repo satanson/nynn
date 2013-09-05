@@ -13,6 +13,8 @@ nynn_cli:nynn_cli.o boss.o public.o socket.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 boss_demo:boss_demo.o boss.o public.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+server: server.o public.o socket.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 client: client.o public.o socket.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 log_demo:log_demo.o public.o

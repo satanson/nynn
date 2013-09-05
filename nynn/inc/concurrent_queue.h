@@ -8,6 +8,7 @@ using namespace std;
 
 template <typename T> class concurrent_queue{
 	private:
+
 		list<T> lst;
 		pthread_mutex_t lock;
 		pthread_cond_t notempty;
@@ -22,26 +23,23 @@ template <typename T> class concurrent_queue{
 		}
 		T pop(){
 			T item;
-			pthread_mutex_lock(&this->lock);
+			getlock_t get(&this->lock);
 			while(lst.empty()){
 				pthread_cond_wait(&this->notempty,&this->lock);
 			}
 			item=lst.front();
 			lst.pop_front();
-			pthread_mutex_unlock(&this->lock);
 			return item;
 		}
 		void push(const T& item){
-			pthread_mutex_lock(&this->lock);
+			getlock_t get(&this->lock);
 			lst.push_back(item);
-			pthread_mutex_unlock(&this->lock);
 			pthread_cond_broadcast(&this->notempty);
 		}
 		bool empty(){
 			bool ret;
-			pthread_mutex_lock(&this->lock);
+			getlock_t get(&this->lock);
 			ret=lst.empty();
-			pthread_mutex_unlock(&this->lock);
 			return ret;
 		}
 };

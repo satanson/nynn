@@ -365,7 +365,6 @@ void*  writer(void* args)
 		int errnum=pthread_mutex_trylock(wlock);
 		//other thread is busy using socket
 		if(errnum==EBUSY){
-			info("wlock is is busy!");
 			continue;
 		}else if (errnum!=0){
 			sock.close();
@@ -463,10 +462,9 @@ void*  reader(void* args)
 					info("msgsize=%d,size=%d",msgsize,(*cached)->size);
 					if (msgsize==(*cached)->size){
 
-						info("RECV(shmid=%d size=%d):%s"
+						info("RECV(shmid=%d size=%d)"
 								,(*cached)->shmid
-								,(*cached)->size
-								,(*cached)->shm+sizeof(size_t));
+								,(*cached)->size);
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
 						token_queue_t *rqueue=hoses.add(msg->msghdr.msgid);
@@ -568,6 +566,7 @@ void* wresponder(void*args)
 		nynn_token_t *req=new nynn_token_t;
 		if (sizeof(*req)!=wresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){
 			wresponse.close();
+			pthread_cancel(tid);
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
@@ -592,7 +591,11 @@ void* rresponder(void*args)
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
-
+	if (pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS,NULL)!=0)
+	{
+		rresponse.close();
+		thread_exit_on_error(errno,"failed to pthread_setcanceltype");
+	}
 	char *msgid=new char[MSGIDSIZE];
 	memset(msgid,0,MSGIDSIZE);
 	
@@ -607,11 +610,8 @@ void* rresponder(void*args)
 	
 	token_queue_t *rqueue=hoses.add(msgid);
 
-	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t))){
+	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t),MSG_NOSIGNAL)){
 		rresponse.close();
-		hoses.remove(msgid);
-		delete msgid;
-		delete rqueue;
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
 
@@ -619,20 +619,14 @@ void* rresponder(void*args)
 		nynn_token_t *req=new nynn_token_t;
 		if (sizeof(*req)!=rresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){
 			rresponse.close();
-			hoses.remove(msgid);
-			delete msgid;
-			delete rqueue;
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
 		info("READ");
 		req=rqueue->pop();
 		info("READ(shmid=%d size=%d)",req->shmid,req->size);
-		if (sizeof(*req)!=rresponse.send((char*)req,sizeof(*req))){
+		if (sizeof(*req)!=rresponse.send((char*)req,sizeof(*req),MSG_NOSIGNAL)){
 			rresponse.close();
-			hoses.remove(msgid);
-			delete msgid;
-			delete rqueue;
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 		delete req;

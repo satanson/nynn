@@ -37,9 +37,9 @@ struct link_t{
 struct hose_t{
 	private:
 		pthread_mutex_t lock;
-		typedef map<const char*,token_queue_t*> hosemap_t;
+		typedef map<string,token_queue_t*> hosemap_t;
 		typedef hosemap_t::iterator hosemap_iterator_t;
-		typedef pair<const char*,token_queue_t*> hosemap_pair_t;
+		typedef pair<string,token_queue_t*> hosemap_pair_t;
 		hosemap_t hosemap;
 	public:
 		hose_t()
@@ -52,18 +52,16 @@ struct hose_t{
 			pthread_mutex_destroy(&lock);
 			hosemap_iterator_t iter;
 			for(iter=hosemap.begin();iter!=hosemap.end();iter++){
-				delete iter->first;
 				delete iter->second;
 			}
 		}
 
-		token_queue_t* add(const char*key)
+		token_queue_t* add(const char*k)
 		{
 			hosemap_iterator_t iter;
 			token_queue_t*q;
-			
-			pthread_mutex_lock(&lock);
-			
+			string key(k);	
+			getlock_t get(&this->lock);	
 			iter=hosemap.find(key);
 			if (iter==hosemap.end()){
 			   	q=new token_queue_t;
@@ -71,20 +69,20 @@ struct hose_t{
 			}else{
 			   	q=iter->second;
 			}
-			pthread_mutex_unlock(&lock);
-			
 			return q;
 		}
 
-		void remove(const char *key)
+		void remove(const char *k)
 		{
 			hosemap_iterator_t iter;
-			pthread_mutex_lock(&lock);
+			string key(k);
+			
+			getlock_t get(&this->lock);	
+			
 			iter=hosemap.find(key);
 			if(iter!=hosemap.end()){
 				hosemap.erase(key);
 			}
-			pthread_mutex_lock(&lock);
 		}
 };
 
@@ -137,23 +135,21 @@ class shm_manager_t{
 
 		int require(int shmid,void**shmaddr,size_t size,bool removal){
 			int retval;
-			pthread_mutex_lock(&this->lock);
+			getlock_t get(&this->lock);
 			while(this->count==this->shmseg)
 				pthread_cond_wait(&this->notfull,&this->lock);
 			retval=nynn_shmat(shmid,shmaddr,size,removal);
 			this->count++;
-			pthread_mutex_unlock(&this->lock);
 			pthread_cond_broadcast(&this->notempty);
 			return retval;
 		}
 		int release(const void*shmaddr){
 			int retval=0;
-			pthread_mutex_lock(&this->lock);
+			getlock_t get(&this->lock);
 			while(this->count==0)
 				pthread_cond_wait(&this->notempty,&this->lock);
 			retval=nynn_shmdt(shmaddr);
 			this->count--;
-			pthread_mutex_unlock(&this->lock);
 			pthread_cond_broadcast(&this->notfull);
 		}
 
