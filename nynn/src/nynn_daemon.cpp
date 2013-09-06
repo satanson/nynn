@@ -113,49 +113,51 @@ int main(int argc,char*argv[])
 	info("hostaddr=%d\n",hostaddr);
 	info("linksize=%d\n",linksize);
 
-	size_t n=0;
-	for (n=0;n<linksize;n++){
-		links[n].cachedfragment=NULL;
-		pthread_mutex_init(&links[n].wlock,NULL);
-		pthread_mutex_init(&links[n].rlock,NULL);
-		cout<<links[n].hostname<<":"
-			<<links[n].hostaddr<<":"
-			<<links[n].port<<endl;
-	}
-	// links has linksize items
-	size_t k=0;
-	while(strcmp(links[k].hostname,hostname)!=0 &&
-			links[k].hostaddr != hostaddr){
-		k++;
-	}
-
-	pthread_t *tids =new pthread_t[linksize-k];
-	pthread_create(&tids[0],NULL,acceptor,&links[k]);
-
-	for (size_t i=k+1;i<linksize;i++){
-		pthread_create(&tids[i-k],NULL,connector,&links[i]);
-	}
-
-	for (size_t i=0;i<linksize-k;i++){
-		int errnum;
-		if ((errnum=pthread_join(tids[i],NULL)!=0)){
-			exit_on_error(errnum,"failed to pthread_join");
+	if (linksize>1){
+		size_t n=0;
+		for (n=0;n<linksize;n++){
+			links[n].cachedfragment=NULL;
+			pthread_mutex_init(&links[n].wlock,NULL);
+			pthread_mutex_init(&links[n].rlock,NULL);
+			cout<<links[n].hostname<<":"
+				<<links[n].hostaddr<<":"
+				<<links[n].port<<endl;
 		}
-	}
-	delete[] tids;
+		// links has linksize items
+		size_t k=0;
+		while(strcmp(links[k].hostname,hostname)!=0 &&
+				links[k].hostaddr != hostaddr){
+			k++;
+		}
 
-	delaycleaned=NULL;
+		pthread_t *tids =new pthread_t[linksize-k];
+		pthread_create(&tids[0],NULL,acceptor,&links[k]);
 
-	pthread_t poller_tid;
-	pthread_create(&poller_tid,NULL,poller,NULL);
+		for (size_t i=k+1;i<linksize;i++){
+			pthread_create(&tids[i-k],NULL,connector,&links[i]);
+		}
 
-	pthread_t *reader_tid=new pthread_t[reader_num];
-	for (size_t i=0;i<reader_num;i++){
-		pthread_create(reader_tid+i,NULL,reader,NULL);
-	}
-	pthread_t *writer_tid=new pthread_t[writer_num];
-	for (size_t i=0;i<writer_num;i++){
-		pthread_create(writer_tid+i,NULL,writer,NULL);
+		for (size_t i=0;i<linksize-k;i++){
+			int errnum;
+			if ((errnum=pthread_join(tids[i],NULL)!=0)){
+				exit_on_error(errnum,"failed to pthread_join");
+			}
+		}
+		delete[] tids;
+
+		delaycleaned=NULL;
+
+		pthread_t poller_tid;
+		pthread_create(&poller_tid,NULL,poller,NULL);
+
+		pthread_t *reader_tid=new pthread_t[reader_num];
+		for (size_t i=0;i<reader_num;i++){
+			pthread_create(reader_tid+i,NULL,reader,NULL);
+		}
+		pthread_t *writer_tid=new pthread_t[writer_num];
+		for (size_t i=0;i<writer_num;i++){
+			pthread_create(writer_tid+i,NULL,writer,NULL);
+		}
 	}
 
 	Socket recipient("127.0.0.1",port);
@@ -467,9 +469,10 @@ void*  reader(void* args)
 								,(*cached)->size);
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
-						token_queue_t *rqueue=hoses.add(msg->msghdr.msgid);
+						token_queue_t *rqueue=hoses.get(msg->msghdr.msgid);
 						shmmgr->release((*cached)->shm);
-						rqueue->push((*cached));
+						if (rqueue!=NULL)rqueue->push((*cached));
+						else nynn_shmrm((*cached)->shmid);
 						(*cached)=NULL;
 						//handle next msg
 						continue;
@@ -522,10 +525,10 @@ void*  reader(void* args)
 								,(*cached)->shm+sizeof(size_t));
 
 						nynn_msg_t *msg=(nynn_msg_t*)(*cached)->shm;
-						token_queue_t *rqueue=hoses.add(msg->msghdr.msgid);
+						token_queue_t *rqueue=hoses.get(msg->msghdr.msgid);
 						shmmgr->release((*cached)->shm);
-						rqueue->push((*cached));
-						(*cached)=NULL;
+						if (rqueue!=NULL)rqueue->push((*cached));
+						else nynn_shmrm((*cached)->shmid);
 						(*cached)=NULL;
 					}else{
 						(*cached)->size+=s;
@@ -570,8 +573,20 @@ void* wresponder(void*args)
 			thread_exit_on_error(errno,"terminate thread!");
 		}
 
-		shmmgr->require(req->shmid,(void**)&req->shm,req->size,true);
 
+		uint32_t ntohlhost=ntohl(req->host);
+		if (req->host==hostaddr||0x7f000000<=ntohlhost&&ntohlhost<=0x7fffffff){
+			shmmgr->require(req->shmid,(void**)&req->shm,req->size,false);
+			nynn_msg_t *msg=(nynn_msg_t*)req->shm;
+			req->cmd=READ;
+			token_queue_t*rqueue=hoses.get(msg->msghdr.msgid);
+			shmmgr->release(req->shm);
+			if (rqueue!=NULL)rqueue->push(req);
+			else nynn_shmrm(req->shmid);
+			continue;
+		}	
+
+		shmmgr->require(req->shmid,(void**)&req->shm,req->size,true);
 		size_t j=0;
 		while(j<linksize && links[j].hostaddr!=req->host)j++;
 		if (j<linksize){
@@ -596,9 +611,9 @@ void* rresponder(void*args)
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to pthread_setcanceltype");
 	}
-	char *msgid=new char[MSGIDSIZE];
+	char msgid[MSGIDSIZE];
 	memset(msgid,0,MSGIDSIZE);
-	
+
 	if (sizeof(msgid)!=rresponse.recv(msgid,sizeof(msgid),MSG_WAITALL)){
 		rresponse.close();
 		thread_exit_on_error(errno,"failed to abtain hostno.");
@@ -607,7 +622,7 @@ void* rresponder(void*args)
 		rresponse.close();
 		thread_exit_on_error(errno,"msgid exceeds its maximum size");
 	}
-	
+
 	token_queue_t *rqueue=hoses.add(msgid);
 
 	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t),MSG_NOSIGNAL)){
@@ -615,6 +630,7 @@ void* rresponder(void*args)
 		thread_exit_on_error(errno,"failed to pthread_detach");
 	}
 
+	release_rqueue_t release(&hoses,msgid,rqueue);
 	while(true){
 		nynn_token_t *req=new nynn_token_t;
 		if (sizeof(*req)!=rresponse.recv((char*)req,sizeof(*req),MSG_WAITALL)){

@@ -4,7 +4,7 @@
 int nynn_shmat(int shmid, void **shmaddr,size_t size,bool removal)
 {
 	if(shmid==-1){
-		shmid=shmget(IPC_PRIVATE,size,IPC_CREAT|IPC_EXCL);
+		shmid=shmget(IPC_PRIVATE,size,IPC_CREAT|IPC_EXCL|0777);
 		if (shmid==-1){
 			error("failed to shmget");
 			return -1;
@@ -32,6 +32,21 @@ int nynn_shmdt(const void*shmaddr)
 {
 	if (shmdt(shmaddr)==-1){
 		error("failed to shmdt");
+		return -1;
+	}
+	return 0;
+}
+
+int nynn_shmrm(int shmid)
+{
+	struct shmid_ds ds;
+	if (shmctl(shmid,IPC_STAT,&ds)==-1){
+		error("failed to shmctl(shmid,IPC_STAT...");
+		return -1;
+	}
+	if (ds.shm_nattch!=0)return 0;
+	if (shmctl(shmid,IPC_RMID,NULL)==-1){
+		error("failed to remove shared memory");
 		return -1;
 	}
 	return 0;

@@ -72,17 +72,23 @@ struct hose_t{
 			return q;
 		}
 
+		token_queue_t* get(const char *k)
+		{
+			hosemap_iterator_t iter;
+			token_queue_t *q;
+			string key(k);
+			getlock_t get(&this->lock);
+			iter=hosemap.find(key);
+			if (iter==hosemap.end())return NULL;
+			else return iter->second;
+		}
+
 		void remove(const char *k)
 		{
 			hosemap_iterator_t iter;
 			string key(k);
-			
 			getlock_t get(&this->lock);	
-			
-			iter=hosemap.find(key);
-			if(iter!=hosemap.end()){
-				hosemap.erase(key);
-			}
+			hosemap.erase(key);
 		}
 };
 
@@ -153,6 +159,29 @@ class shm_manager_t{
 			pthread_cond_broadcast(&this->notfull);
 		}
 
+};
+class release_rqueue_t{
+private:
+	hose_t *hoses;
+	string  key;
+	token_queue_t *rqueue;
+public:
+	release_rqueue_t(hose_t *hoses,const char*key,token_queue_t *rqueue)
+	{
+		this->hoses=hoses;
+		this->key=key;	
+		this->rqueue=rqueue;
+	}
+	~release_rqueue_t()
+	{
+		this->hoses->remove(key.c_str());
+		info("remove key:'%s' from hoses!",key.c_str());
+		while(!rqueue->empty()){
+			nynn_token_t*token=rqueue->pop();
+			delete token;
+		}
+		delete rqueue;
+	}
 };
 #endif
 

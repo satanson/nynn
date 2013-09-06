@@ -66,7 +66,7 @@ struct nynn_msg_t{
 };
 int nynn_shmat(int shmid, void**shmaddr, size_t size,bool removal);
 int nynn_shmdt(const void*shmaddr);
-
+int nynn_shmrm(int shmid);
 //int nynn_write(nynn_tap_t *tap,uint32_t *inetaddr,size_t num, char*buff,size_t size);
 int tap_infuse(nynn_tap_t *tap,const char*msg,size_t msgsize);
 //int nynn_read(nynn_tap_t *tap,char**buff,size_t *size);

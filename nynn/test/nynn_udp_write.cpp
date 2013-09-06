@@ -42,6 +42,9 @@ int main(int argc,char*argv[])
 		}
 	}
 	
+	cout<<"msgid="<<msgid<<endl;
+	cout<<"ownmsgid="<<ownmsgid<<endl;
+	cout<<"host="<<host<<endl;
 	nynn_tap_t tap(ownmsgid);
 	char *wbuff=new char[wsize];
 	while(true){
