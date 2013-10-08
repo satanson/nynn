@@ -20,7 +20,7 @@ int main()
 	try{
 		foo3();
 	}catch(nynn_error_t& err){
-		err.printbacktrace();
+		err.print_backtrace();
 	}
 	return 0;
 
