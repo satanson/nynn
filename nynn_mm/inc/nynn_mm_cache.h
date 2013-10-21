@@ -1,63 +1,44 @@
 #ifndef NYNN_MM_CACHE_BY_SATANSON
 #define NYNN_MM_CACHE_BY_SATANSON
-#include<nynn_mm_local.h>
+#include<nynn_mm_common.h>
 using namespace nynn::mm::common;
-namespace nynn{namespace mm{namespace cache{
+namespace nynn{namespace mm{
 template <
-	size_t NBLOCK=1<<16,
-	size_t BLOCKSZ=1<<9,
-	size_t NHEAD=1<<10,
+	size_t CACHE_BLOCK_MAX,
+	size_t CACHE_BLOCK_SIZE,
+	size_t CACHE_HEAD_MAX,
 > class cache_t;
 
-template <BLOCKSZ,NBLOCK,NHEAD>
-class cache_t:public shm_allocator{
+template <size_t CACHE_BLOCK_SIZE,size_t CACHE_BLOCK_MAX,size_t CACHE_HEAD_MAX>
+class cache_t:public shm_allocator_t{
 public:
-	typedef cache_t<BLOCKSZ,NBLOCK,NHEAD> cache;
-	typedef block_t<BLOCKSZ> block_t;
+	typedef cache_t<CACHE_BLOCK_SIZE,CACHE_BLOCK_MAX,CACHE_HEAD_MAX> type;
+	typedef block_t<CACHE_BLOCK_SIZE> block_type;
+
 	struct cache_entry_t{
-		size_t _source;
-		size_t _blkno;
-		uint16_t _next;
-		uint16_t _prev;
+		VertexNoType _source;
+		ChunkBlockNoType _blkno;
+		CacheBlockNoType _next;
+		CacheBlockNoType _prev;
 	};
 	
 	struct cache_head_t{
-		uint16_t _next;
-		uint16_t _prev;
-		uint8_t  _num;
+		CacheBlockNoType _next;
+		CacheBlockNoType _prev;
+		CacheListLenType _length;
 	};
 
-	static void init(const string&path)
-	{
-		mmap_file_t mfile(path,BLOCKSZ*NBLOCK);
-		void *addr=mfile.get_base();
-		cache* ca=static_cast<cache*>(addr);
-
-		memset(ca->_tab,0,sizeof(ca->_tab));
-
-		size_t start=(sizeof(ca->_tab)+BLOCKSZ-1)/BLOCKSZ;
-
-		for (i=NBLOCK-1;i>=start;i--){
-			ca->_tab._entries[i].next=ca->_tab._free.next;
-			ca->_tab._free.next=i;
-		}
-		mfile.sync(MS_SYNC|MS_INVALIDATE);
-	}
-
-	static uint32_t hash(size_t vertex,size_t blkno)
+	static uint32_t hash(VertexNoType vertex,ChunkBlockNoType blkno)
 	{
 		uint32_t seed;
-		vertex*=(blkno+1)
+		vertex*=(blkno+1);
 		seed=0xffffffff&&vertex;
 		seed+=vertex>>32;
-		return rand_r(&seed)%NHEAD;
+		return rand_r(&seed)%CACHE_HEAD_MAX;
 	}
 	
-	block_t* read(size_t vertex,size_t blkno,block_t *blk)
+	block_type* read(VertexNoType vertex,ChunkBlockNoType blkno,block_type *blk)
 	{
-
-		lock_t *lck=lock_t::get_lock(_tab._mutex,sizeof(lock_t));
-		raii_lock_t get(lck);
 
 		size_t h=hash(vertex,blkno);
 		size_t curr=find(h,vertex,blkno);
@@ -66,21 +47,19 @@ public:
 
 		move_front(h,curr);
 
-		block_t *block=reinterpret_cast<block_t>(&_tab)+curr;
-		memcpy(blk,block,sizeof(block_t));
+		block_type *block=reinterpret_cast<block_type>(&_tab)+curr;
+		memcpy(blk,block,sizeof(block_type));
 		return blk;
 	}
 
-	void write(size_t vertex,size_t blkno,block_t*blk)
+	void write(VertexNoType vertex,ChunkBlockNoType blkno,block_type*blk)
 	{
-		lock_t *lck=lock_t::get_lock(_tab._mutex,sizeof(lock_t));
-		raii_lock_t get(lck);
 
 		size_t h=hash(vertex,blkno);
 		size_t curr=find(h,vertex,blkno);
 
 		if (curr=0){
-			if (_tab._heads[h]._num==NBLOCK/NHEAD||_tab._free.next==0){
+			if (_tab._heads[h]._num==CACHE_BLOCK_MAX/CACHE_HEAD_MAX||_tab._free.next==0){
 				curr=_tab._heads[h].prev;
 				move_front(h,curr);
 			}else{
@@ -92,34 +71,35 @@ public:
 			move_front(h,curr);
 		}
 		
-		block_t *block=reinterpret_cast<block_t>(&_tab)+curr;
-		memcpy(block,blk,sizeof(block_t));
+		block_type *block=reinterpret_cast<block_type>(&_tab)+curr;
+		memcpy(block,blk,sizeof(block_type));
 	}
 
-	static cache* get_cache(void*shm)
+	static type* get_cache(void*shm)
 	{
-		cache *ca=static_cast<cache*>(shm);
-		if (ca->_tab._refc==0){
-			lock_t::get_lock(ca->_tab._mutex,sizeof(lock_t));
-		}
 
-		ca->_tab._refc++;
-		return ca;
+		return new(shm)cache_t;
 	}
 
 	~cache_t()
 	{
-		lock_t *lck=lock_t::get_lock(_tab._mutex,sizeof(lock_t));
-		resetable_auto_ptr<lock_t> auto_lck(lck);
-		raii_lock_t get(lck);
-		_tab._refc--;
-		if (_tab._refc>0)auto_lck.reset();
 	}
 
 private:
-	cache_t();
+	cache_t()
+	{
+		memset(&_tab,0,sizeof(_tab));
+
+		size_t start=(sizeof(_tab)+CACHE_BLOCK_SIZE-1)/CACHE_BLOCK_SIZE;
+
+		for (size_t i=CACHE_BLOCK_MAX-1;i>=start;i--){
+			_tab._entries[i]._next=_tab._free._next;
+			_tab._free._next=i;
+		}
+	}
+
 	cache_t(const cache_t&);
-	cache_t& operator(const cache_t&);
+	cache_t& operator=(const cache_t&);
 
 	size_t find(size_t h,size_t vertex,size_t blkno)
 	{
@@ -163,7 +143,7 @@ private:
 	void push_front(size_t h,size_t e)
 	{
 		cache_head_t &head=_tab._heads[h];
-		assert(head._num<NBLOCK/NHEAD);
+		assert(head._num<CACHE_BLOCK_MAX/CACHE_HEAD_MAX);
 		assert(e!=0);
 
 		//insert e at head.
@@ -183,13 +163,11 @@ private:
 	}
 
 	struct{
-		size_t 		  _refc;
-		char 		  _mutex[sizeof(lock_t)];
-		cache_head_t  _heads[NHEAD];
+		cache_head_t  _heads[CACHE_HEAD_MAX];
 		cache_head_t  _free;
-		cache_entry_t _entries[NBLOCK];
+		cache_entry_t _entries[CACHE_BLOCK_MAX];
 	}_tab;
 };
 
-}}}
+}}
 #endif

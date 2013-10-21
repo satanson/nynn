@@ -52,13 +52,13 @@ int nynn_shmrm(int shmid)
 	return 0;
 }
 
-nynn_tap_t::nynn_tap_t(const char* msgid)
+nynn_tap_t::nynn_tap_t(const char* msgid,uint16_t port)
 {
 	assert(strlen(msgid)<=MSGIDSIZE);	
 	pthread_mutex_init(&this->wlock,NULL);
 	pthread_mutex_init(&this->rlock,NULL);
 	Socket wso;
-	if (wso.connect("127.0.0.1",30001)!=0){
+	if (wso.connect("127.0.0.1",port)!=0){
 		exit_on_error(errno,"failed to connect nynn_daemon for writting!");
 	}
 	

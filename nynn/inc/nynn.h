@@ -47,7 +47,7 @@ class nynn_tap_t{
 		char msgid[MSGIDSIZE];
 	public:
 		//nynn_tap_t(uint16_t port,int hoseno);
-		nynn_tap_t(const char*msgid);
+		nynn_tap_t(const char*msgid,uint16_t port=30001);
 		~nynn_tap_t();
 
 		//int read(char**buff,size_t *size);

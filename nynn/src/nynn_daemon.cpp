@@ -623,6 +623,11 @@ void* rresponder(void*args)
 		thread_exit_on_error(errno,"msgid exceeds its maximum size");
 	}
 
+	if (hoses.get(msgid)!=NULL){
+		rresponse.close();
+		thread_exit_on_error(EINVAL,"the same msgid registered duplicately.");
+	}
+
 	token_queue_t *rqueue=hoses.add(msgid);
 
 	if (sizeof(size_t)!=rresponse.send((char*)&shmmax,sizeof(size_t),MSG_NOSIGNAL)){

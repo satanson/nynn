@@ -1,2 +1,0 @@
-#!/bin/bash
-./nynn_daemon -f network.cfg -r 2 -w 2 -l 3 -p 30001 -H 20

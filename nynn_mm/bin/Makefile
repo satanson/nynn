@@ -1,9 +1,12 @@
 vpath %.cc ../src ../test
 ifdef dbg
-DEBUG:=-DDEBUG -g
+DEBUG:=-DDEBUG -g -ggdb3 -rdynamic
 endif
-CXXFLAGS+= -I ../inc -L ../lib -lnynn -pthread -lrt -rdynamic $(DEBUG)
-
+CXXFLAGS+= -std=c++0x -I ../inc -L ../lib -pthread -lrt -lnynn $(DEBUG)
+testContext:testContext.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+testProcessOnce:testProcessOnce.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 testlocal:testlocal.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 testMapFile:testMapFile.o
