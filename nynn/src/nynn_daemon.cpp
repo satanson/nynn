@@ -193,6 +193,9 @@ int loadconfig(const char*cfgpath,link_t *links,size_t size)
 	char hostname[32],hostaddr[32],port[32],*saveptr;
 
 	fstream cfg_fin(cfgpath);
+	if(cfg_fin.fail()){
+		exit_on_error(ENOENT,"network configuration file is not found.");
+	}
 	do{
 		cfg_fin.getline(line,128);
 		if(cfg_fin.fail()&&!cfg_fin.eof()){

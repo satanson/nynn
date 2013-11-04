@@ -2,16 +2,23 @@ vpath %.cpp ../src ../test
 ifdef dbg
 DEBUG:=-DDEBUG -g
 endif
-CXXFLAGS+= -I ../inc -L ./  -lpthread -lrt $(DEBUG)
-basedir=$(basedir)
-all:nynn_daemon libnynn.so
+CXXFLAGS+= -I ../inc -L ./  -lpthread -lrt -fPIC $(DEBUG)
+basedir=/usr/nynn
+all:nynn_daemon libnynn.so nynn_read nynn_write
 	rm -fr *.o
 
 libnynn.so:public.o nynn.o socket.o nynn.o nynn_daemon.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ -shared -fpic
+	$(CXX) $(CXXFLAGS) -o $@ $^ -shared 
 
 nynn_daemon:nynn_daemon.o public.o socket.o nynn.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+nynn_write:nynn_write.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^ -L$(basedir)/lib -lnynn
+nynn_read:nynn_read.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^ -L$(basedir)/lib -lnynn
+
+%.o:%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 install:
 	cp nynn_daemon /usr/bin/
