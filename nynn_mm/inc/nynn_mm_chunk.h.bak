@@ -1,7 +1,7 @@
 #ifndef NYNN_MM_CHUNK_BY_SATANSON
 #define NYNN_MM_CHUNK_BY_SATANSON
 #include<nynn_mm_common.h>
-#include<nynn_mm_config.h>
+#include0qinclude<nynn_mm_config.h>
 using namespace nynn::mm::common;
 namespace nynn{namespace mm{
 
@@ -15,6 +15,7 @@ template <
 
 struct vertex_t;
 struct edge_t; 
+struct0
 struct vertex_t{
 	uint64_t source;
 	uint64_t nedge;
@@ -36,7 +37,6 @@ template<size_t BLOCK_SIZE>
 struct block_t{
 	union{
 		struct{
-			uint8_t  flag;//0 indicates next block is not  overflow, 1 indicates overflow.
 			uint32_t prev;//prev block
 			uint32_t next;//next block
 			time_t mints;//min timestamp
@@ -83,36 +83,12 @@ public:
 
     uint32_t getNumberOfEdges(uint64_t vtx)
 	{
-		if (__builtin_expect(!vertexExist(vtx),0))return 0;
-		return getVertex(vtx)->nedge;
 	}
+	int newVertex(uint64_t vtx,vector<edge_t>&edges);
+	int delVertex(uint64_t vtx,vector<edge_t>&edges,uint32_t nedge);
+	int pushEdges(uint64_t vtx,vector<edge_t>&edges);
+	int popEdeges(uint64_t vtx,vector<edge_t>&edges,uint32_t nedge);
 
-	int newVertex(uint64_t vtx,vector<edge_t>&edges)
-	{
-		if (__builtin_expect(vertexExist(vtx),0))
-			pushEdges(vtx,edges);
-		if (__builtin_expect(!vertexAvail(vtx),0))
-	}
-	int delVertex(uint64_t vtx,vector<edge_t>&edges,uint32_t nedge)
-	
-	template<class Iter>
-	int pushEdges(uint64_t vtx,vector<edge_t>&edges)
-
-	int popEdges(uint64_t vtx,vector<edge_t>&edges,uint32_t nedge)
-
-	template<class Iter>
-	int readEdges(uint64_t vtx,const Iter &begin,const Iter &end);
-	
-	template <class Iter>
-	int pushABlockOfEdges(uint64_t vtx,const Iter &begin,const Iter &end,block_t*blk)
-	{
-
-	}
-	template <class Iter>
-	int popABlockOfEdges(uint64_t vtx, const Iter &begin,const Iter &end,block_t*blk)
-	{
-
-	}
 
 	uint32_t require()
 	{
@@ -157,43 +133,10 @@ public:
 
 		superblk.nfree++;
 	}
-	
-	size_t getNumberOfVertices()const{return superblk.nvert;}
-	
-	uint64_t infVertex()const
-	{
-		assert(superblk.nvert>0);
-		return superblk.vertices[0].source;
-	}
-
-	uint64_t supVertex()const
-	{
-		assert(superblk.nvert>0);
-		return superblk.vertices[superblk.nvert-1].source;
-	}
-
-	uint32_t infOffset()const{return 0;}
-	uint32_t supOffset()const{return CHUNK_VERTEX_MAX-1;}
-	
-	bool vertexExist(uint64_t vtx)
-	{
-		if (__builtin_expect((getNumberOfVertices()==0), 0))return false;
-		if (__builtin_expect((infVertex()<=vtx && vtx<=supVertex()),1))return true;
-		return false;
-	}
-
-	bool vertexAvail(uint64_t vtx)
-	{
-		if (__builtin_expect((getNumberOfVertices()==0), 0))return false;	
-		uint32_t off=vtx-infVertex();
-		if (__builtin_expect((infOffset()<=off&&off<=supOffset()),1))return true;
-	}
-
-	vertex_t* getVertex(uint64_t vtx)
-	{
-		if (__builtin_expect(!vertexAvail(vtx),0))return NULL;
-		return &superblk.vertices[vtx-infVertex()];
-	}
+	uint64_t get_minvertex()const{return superblk.vertex[0].source;}
+	uint64_t get_maxvertex()const{return superblk.vertex[superblk.nvert-1].source;}
+	size_t get_vertexnum()const{return superblk.nvert;}
+	vertex_t * get_vertex(size_t i){return &superblk.vertex[i];}
 	
 private:
 
@@ -209,7 +152,7 @@ private:
 		uint32_t head;//the index of first head blocks;
 		uint32_t top;
 
-		vertex_t vertices[CHUNK_VERTEX_MAX];
+		vertex_t vertex[CHUNK_VERTEX_MAX];
 	}superblk;
 };
 

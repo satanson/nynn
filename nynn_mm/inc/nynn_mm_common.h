@@ -2,9 +2,16 @@
 #define NYNN_MM_COMMON_BY_SATANSON
 
 #include<iostream>
+#include<fstream>
 #include<sstream>
+#include<iomanip>
 #include<memory>
 #include<string>
+#include<vector>
+#include<list>
+#include<map>
+#include<exception>
+#include<algorithm>
 
 #include<cstring>
 #include<cstdlib>
@@ -21,11 +28,17 @@
 #include<sys/mman.h>
 #include<sys/shm.h>
 #include<sys/sem.h>
+#include<sys/socket.h>
+
 
 #include<unistd.h>
 #include<fcntl.h>
 #include<execinfo.h>
 #include<glob.h>
+#include<netdb.h>
+
+#include<arpa/inet.h>
+
 using namespace std;
 
 typedef unsigned long long int uint64_t;
@@ -48,7 +61,7 @@ enum{
 	LOG_ERROR=2,
 	LOG_ASSERT=3,
 	LOG_DEBUG=4,
-	//_tag
+	//tag
 	INVALID_TAG=0xffffffff,
 	LOCK_TAG=0xdeadbeef,
 	RWLOCK_TAG=0xfacefeed,
@@ -62,23 +75,25 @@ enum{
 	DUMMY
 };
 
-template <typename T> class resetable_auto_ptr;
 
-class nynn_error_t;
-class mmap_file_t;
+class NynnException;
+class MmapFile;
 
-struct shm_allocator_t;
-class lockop_t;
-class shm_t;
+struct ShmAllocator;
+struct Inetaddr;
+class Lockop;
+class Shm;
 
-class flock_t;
-class frlock_t;
-class fwlock_t;
+class Flock;
+class Frlock;
+class Fwlock;
 
-class raii_flock_t;
+class FlockRAII;
 
+class Monitor;
+class Synchronized;
 
-string& strerr(int errnum,string& s);
+string strerr(int errnum);
 void vlog(ostream &out,const char *file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,va_list ap);
 void log_debug(ostream&out,const char*file,const int line,
@@ -86,7 +101,15 @@ void log_debug(ostream&out,const char*file,const int line,
 void log(ostream& out,const char*file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,...);
 int rand_int();
-bool file_exist(const string& path);
+bool file_exist(const string& m_path);
+uint32_t gethostaddr(string &hostname);
+
+char* ltrim(const char *chars,const char *src, char *dest);
+char* rtrim(const char *chars,const char *src, char *dest);
+char* chop(const char ch,const char *src,char *dest);
+
+vector<string>& gettuple(istream & inputstream,vector<string>& t); 
+vector<vector<string> >& gettuplearray(istream & inputstream,vector<vector<string> >& array); 
 
 #define log_i(msg,...)\
    	log(cerr,__FILE__,__LINE__,__FUNCTION__,LOG_INFO,0,(msg),##__VA_ARGS__)
@@ -99,558 +122,644 @@ bool file_exist(const string& path);
 #define log_d(msg,...)\
    	log(cerr,__FILE__,__LINE__,__FUNCTION__,LOG_DEBUG,0,(msg),##__VA_ARGS__)
 
-#define THROW_ERROR \
-   	throw nynn_error_t(errno,__FILE__,__LINE__,__FUNCTION__)
-#define THROW_ERROR_WITH_ERRNO(errnum) \
-   	throw nynn_error_t((errnum),__FILE__,__LINE__,__FUNCTION__)
+#define throwNynnException(msg) \
+   	throw NynnException(__FILE__,__LINE__,__FUNCTION__,(msg))
 
-bool file_exist(const string& path)
+inline uint32_t gethostaddr(string &hostname)
+{
+	uint32_t addr;
+	char buf[INET_ADDRSTRLEN];
+	if (-1==gethostname(buf,INET_ADDRSTRLEN)){
+		log_e(errno);
+		return 0;
+	}
+	hostname.resize(0);
+	hostname+=buf;
+
+	struct addrinfo  hint, *res, *p;
+	memset(&hint,0,sizeof(hint));
+	hint.ai_family = AF_INET;
+	hint.ai_flags = AI_ADDRCONFIG;
+	
+	if (-1==getaddrinfo(hostname.c_str(),NULL,&hint,&res)){
+		log_e(errno);
+		return 0;
+	}
+	if (res!=NULL){
+		p=res;
+		do{
+			addr=((sockaddr_in*)p->ai_addr)->sin_addr.s_addr;
+			//inet_ntop(AF_INET,&addr,buf,INET_ADDRSTRLEN);
+			//if (strcmp(buf,"127.0.0.1")!=0){
+			if (ntohl(addr)&0xff000000u!=0xff000000u)return addr;
+			p=p->ai_next;
+		}while(NULL!=p);
+		freeaddrinfo(res);
+
+	}else{
+		return 0;
+	}
+
+}
+inline char* ltrim(const char *chars,const char *src, char *dest)
+{
+	string s(src);
+	if (strlen(src)==0){
+		dest[0]='\0';
+	}else if (s.find_first_not_of(chars)==string::npos){
+		dest[0]='\0';
+	}else{
+		string s1=s.substr(s.find_first_not_of(chars));
+		strcpy(dest,s1.c_str());
+	}
+	return dest;
+}
+
+inline char* rtrim(const char *chars,const char *src, char *dest)
+{
+	string s(src);
+	if (strlen(src)==0){
+		dest[0]='\0';
+	}else if(s.find_last_not_of(chars)==string::npos){
+		dest[0]='\0';
+	}else{		
+		string s1=s.substr(0,s.find_last_not_of(chars)+1);
+		strcpy(dest,s1.c_str());
+	}
+	return dest;
+}
+
+inline char* chop(const char ch,const char *src,char *dest)
+{	
+	if (strlen(src)==0){
+		dest[0]='\0';
+	}else{
+		string s(src);
+		string s1=s.substr(0,s.find_first_of(ch));
+		strcpy(dest,s1.c_str());
+	}
+	return dest;
+}
+inline vector<string> & gettuple(istream &inputstream,vector<string>&t)
+{
+	string word;
+	t.resize(0);
+	word.reserve(64);
+	while(!inputstream.eof()){
+		inputstream>>word;
+		t.push_back(word);
+	}
+	return t;
+}
+
+inline vector<vector<string> >& gettuplearray(istream &inputstream,vector<vector<string> >& array)
+{
+	vector<string> t;
+	stringstream ss;
+	char buff[64];
+
+	while (!inputstream.eof()){
+		do{
+			inputstream.setstate(inputstream.rdstate()&~ios::failbit);
+			inputstream.getline(buff,64,'\n');
+			ss<<buff;
+		}while(inputstream.fail()&&!inputstream.eof());
+
+		if(ss.str().size()!=0)array.push_back(gettuple(ss,t));
+		ss.str(string(""));
+		ss.clear();
+	}
+	return array;
+}	
+
+inline bool file_exist(const string& m_path)
 {
 	struct stat st;
-	if (stat(path.c_str(),&st)==0)return true;
+	if (stat(m_path.c_str(),&st)==0)return true;
 	if (errno!=ENOENT)log_e(errno);
 	return false;
 }
 
-//definition
-template <typename T> class resetable_auto_ptr{
-public:
-	resetable_auto_ptr(T* p):_ptr(p) {}
-	~resetable_auto_ptr(){ if (_ptr) delete _ptr;}
-	T* operator->(){ return _ptr;}
-	void reset() {_ptr=NULL;}
-private:
-	T *_ptr;
-	resetable_auto_ptr(const resetable_auto_ptr&);
-	resetable_auto_ptr& operator=(const resetable_auto_ptr&);
 
-};
-
-class nynn_error_t{
+class NynnException:public exception{
 public:
-	nynn_error_t(const int errnum,const char* file
-			,const int line,const char*function)
-		:ne_errnum(errnum),ne_file(file),ne_line(line),ne_function(function)
+	NynnException(
+			const char* file,
+			const int line,
+			const char*function,
+			const char *msg)
 	{
 		stringstream pack;
-		string s;
-		pack<<"####ERROR@"
-			<<ne_file
-			<<"#"<<ne_line
-			<<"-"<<ne_function<<"():"
-				<<"["<<ne_errnum<<"]"
-					   <<strerr(errnum,s);
+		cout<<"NynnException"
+			<<"@"<<file
+			<<"#"<<line
+			<<"-"<<function
+			<<":"<<msg
+			<<endl;
 
-		ne_msg.reserve(ERR_MSG_RESERVED_SIZE);
-		ne_msg+=pack.str();
-		ne_framesize=backtrace(ne_frames,BACKTRACE_FRAME_SIZE);
-		print_backtrace();
+		m_msg+=msg;
+		m_framesize=backtrace(m_frames,BACKTRACE_FRAME_SIZE);
 	}
+	~NynnException()throw(){}
 
-	const char* get_error()const
+	const char* what()const throw()
 	{
-		return ne_msg.c_str();
+		return m_msg.c_str();
 	}
 
-	void print_backtrace(){
-		cerr<<ne_msg<<endl;
-		char **frames=backtrace_symbols(ne_frames,ne_framesize);
+	void printBacktrace(){
+		char **symbols=backtrace_symbols(m_frames,m_framesize);
 		cerr<<"backtrace:"<<endl;
-		if (frames!=NULL) {
-			for (size_t i=0;i<ne_framesize;i++)
-				cerr<<frames[i]<<endl;
+		if (symbols!=NULL) {
+			for (size_t i=0;i<m_framesize;i++)
+				cerr<<symbols[i]<<endl;
 		}
-		free(frames);
+		free(symbols);
 	}
 
 private:
-	const int 	ne_errnum;
-	const char* ne_file;
-	const int 	ne_line;
-	const char* ne_function;
-	string 		ne_msg;
-	void* 		ne_frames[BACKTRACE_FRAME_SIZE];
-	size_t 		ne_framesize;
+	string m_msg;
+	void*  m_frames[BACKTRACE_FRAME_SIZE];
+	size_t m_framesize;
 };
 
-class mmap_file_t{
+class MmapFile{
 public:
 	//create a shared mapping file for already existed file
-	explicit mmap_file_t(const string& path) throw(nynn_error_t)
-		:_path(path),_offset(0),_base(0)
+	explicit MmapFile(const string& m_path) throw(NynnException)
+		:m_path(m_path),m_offset(0),m_base(0)
 	{
-		_fd=open(path.c_str(),O_RDWR);
-		if (_fd<0)
-			THROW_ERROR;
+		m_fd=open(m_path.c_str(),O_RDWR);
+		if (m_fd<0)
+			throwNynnException(strerr(errno).c_str());
 
-		_length=lseek(_fd,0,SEEK_END);
-		if (_length==-1)
-			THROW_ERROR;
+		m_length=lseek(m_fd,0,SEEK_END);
+		if (m_length==-1)
+			throwNynnException(strerr(errno).c_str());
 
-		_base=mmap(NULL,_length,PROT_WRITE|PROT_READ
-				,MAP_SHARED,_fd,_offset);
+		m_base=mmap(NULL,m_length,PROT_WRITE|PROT_READ
+				,MAP_SHARED,m_fd,m_offset);
 
-		if (_base==MAP_FAILED)
-			THROW_ERROR;
+		if (m_base==MAP_FAILED)
+			throwNynnException(strerr(errno).c_str());
 
-		if (close(_fd)!=0)		
-			THROW_ERROR;
+		if (close(m_fd)!=0)		
+			throwNynnException(strerr(errno).c_str());
 	}
 
 	//create a shared mapping file for already existed file
-	mmap_file_t(const string& path,size_t length,off_t offset)throw(nynn_error_t)
-		:_path(path),_offset(offset),_base(0)
+	MmapFile(const string& m_path,size_t m_length,off_t m_offset)throw(NynnException)
+		:m_path(m_path),m_offset(m_offset),m_base(0)
 	{
-		_fd=open(path.c_str(),O_RDWR);
-		if (_fd<0)
-			THROW_ERROR;
+		m_fd=open(m_path.c_str(),O_RDWR);
+		if (m_fd<0)
+			throwNynnException(strerr(errno).c_str());
 
-		_length=lseek(_fd,0,SEEK_END);
-		if (_length==-1)
-			THROW_ERROR;
+		m_length=lseek(m_fd,0,SEEK_END);
+		if (m_length==-1)
+			throwNynnException(strerr(errno).c_str());
 
-		_length=_offset+length<_length?length:_length-_offset;
+		m_length=m_offset+m_length<m_length?m_length:m_length-m_offset;
 
-		_base=mmap(NULL,_length,PROT_WRITE|PROT_READ
-				,MAP_SHARED,_fd,_offset);
-		if (_base==MAP_FAILED)
-			THROW_ERROR;
+		m_base=mmap(NULL,m_length,PROT_WRITE|PROT_READ
+				,MAP_SHARED,m_fd,m_offset);
+		if (m_base==MAP_FAILED)
+			throwNynnException(strerr(errno).c_str());
 
-		if (close(_fd)!=0)		
-			THROW_ERROR;
+		if (close(m_fd)!=0)		
+			throwNynnException(strerr(errno).c_str());
 
 	}
 
 	// create a private mapping file for a new file
-	mmap_file_t(const string& path,size_t length)throw(nynn_error_t)
-		:_path(path),_length(length),_offset(0),_base(0)
+	MmapFile(const string& m_path,size_t m_length)throw(NynnException)
+		:m_path(m_path),m_length(m_length),m_offset(0),m_base(0)
 	{
-		_fd=open(path.c_str(),O_RDWR|O_CREAT|O_EXCL);
-		if (_fd<0)
-			THROW_ERROR;
+		m_fd=open(m_path.c_str(),O_RDWR|O_CREAT|O_EXCL);
+		if (m_fd<0)
+			throwNynnException(strerr(errno).c_str());
 
 		int PAGESIZE=sysconf(_SC_PAGESIZE);
-		_length=_length<PAGESIZE?PAGESIZE:_length;
-		if (lseek(_fd,_length-4,SEEK_SET)==-1)
-			THROW_ERROR;
+		m_length=m_length<PAGESIZE?PAGESIZE:m_length;
+		if (lseek(m_fd,m_length-4,SEEK_SET)==-1)
+			throwNynnException(strerr(errno).c_str());
 
-		if (write(_fd,"\0\0\0\0",4)!=4)
-			THROW_ERROR;
+		if (write(m_fd,"\0\0\0\0",4)!=4)
+			throwNynnException(strerr(errno).c_str());
 
-		_base=mmap(NULL,_length,PROT_WRITE|PROT_READ
-				,MAP_SHARED,_fd,_offset);
+		m_base=mmap(NULL,m_length,PROT_WRITE|PROT_READ
+				,MAP_SHARED,m_fd,m_offset);
 
-		if (_base==MAP_FAILED)
-			THROW_ERROR;
+		if (m_base==MAP_FAILED)
+			throwNynnException(strerr(errno).c_str());
 
-		if (close(_fd)!=0)		
-			THROW_ERROR;
+		if (close(m_fd)!=0)		
+			throwNynnException(strerr(errno).c_str());
 
 	}
 
-	void _lock(void* addr,size_t length)throw(nynn_error_t)
+	void lock(void* addr,size_t m_length)throw(NynnException)
 	{
 
-		if (!check_range(addr,length))
-			THROW_ERROR_WITH_ERRNO(ENOMEM);
+		if (!checkPagedAlignment(addr,m_length))
+			throwNynnException(strerr(ENOMEM).c_str());
 
-		if (mlock(addr,length)!=0)
-			THROW_ERROR;
+		if (mlock(addr,m_length)!=0)
+			throwNynnException(strerr(errno).c_str());
 
 		return;
 	}
 
-	void _lock()throw(nynn_error_t)
+	void lock()throw(NynnException)
 	{
 		try{
-			_lock(_base,_length);
-		}catch (nynn_error_t& err) {
+			lock(m_base,m_length);
+		}catch (NynnException& err) {
 			throw err;
 		}
 
 		return; 
 	}
 
-	void unlock(void* addr,size_t length)throw(nynn_error_t)
+	void unlock(void* addr,size_t m_length)throw(NynnException)
 	{
 
-		if (!check_range(addr,length))
-			THROW_ERROR_WITH_ERRNO(ENOMEM);
+		if (!checkPagedAlignment(addr,m_length))
+			throwNynnException(strerr(ENOMEM).c_str());
 
-		if (munlock(addr,length)!=0)
-			THROW_ERROR;
+		if (munlock(addr,m_length)!=0)
+			throwNynnException(strerr(errno).c_str());
 
 		return;
 	}
 
-	void unlock()throw(nynn_error_t)
+	void unlock()throw(NynnException)
 	{
 		try{
-			unlock(_base,_length);
-		}catch (nynn_error_t& err) {
+			unlock(m_base,m_length);
+		}catch (NynnException& err) {
 			throw err;
 		}
 
 		return; 
 	}
 
-	void sync(void* addr,size_t length,int flags)throw(nynn_error_t)
+	void sync(void* addr,size_t m_length,int flags)throw(NynnException)
 	{
 
-		if (!check_range(addr,length))
-			THROW_ERROR_WITH_ERRNO(ENOMEM);
+		if (!checkPagedAlignment(addr,m_length))
+			throwNynnException(strerr(ENOMEM).c_str());
 
-		if (msync(addr,length,flags)!=0)
-			THROW_ERROR;
+		if (msync(addr,m_length,flags)!=0)
+			throwNynnException(strerr(errno).c_str());
 
 		return;
 	}
 
-	void sync(int flags)throw(nynn_error_t)
+	void sync(int flags)throw(NynnException)
 	{
 		try{
-			sync(_base,_length,flags);
-		}catch (nynn_error_t& err){
+			sync(m_base,m_length,flags);
+		}catch (NynnException& err){
 			throw err;
 		}
 		return;
 	}
 
 
-	~mmap_file_t()
+	~MmapFile()
 	{
 		try{
 			sync(MS_SYNC|MS_INVALIDATE);
-		}catch (nynn_error_t& err) {
-			cerr<<err.get_error()<<endl;
+		}catch (NynnException& err) {
+			cerr<<err.what()<<endl;
 		}
-		munmap(_base,_length);
+		//munmap(m_base,m_length);
 	}
 
-	void *get_base()const
+	void *getBaseAddress()const
 	{
-		return _base;
+		return m_base;
 	}
 
-	size_t get_length()const
+	size_t getLength()const
 	{
-		return _length;
+		return m_length;
 	}
 
 
 private:
 		//forbid copying object 
-	mmap_file_t(const mmap_file_t&);
-	mmap_file_t& operator=(const mmap_file_t&);
+	MmapFile(const MmapFile&);
+	MmapFile& operator=(const MmapFile&);
 
-	bool check_range(void* &addr,size_t &length)
+	bool checkPagedAlignment(void* &addr,size_t &m_length)
 	{
 		size_t pagesize=static_cast<size_t>(sysconf(_SC_PAGESIZE));
 		// round down addr by page boundary
 		char* taddr=static_cast<char*>(addr);
-		char* tbase=static_cast<char*>(_base);
+		char* tbase=static_cast<char*>(m_base);
 
-		length += ((size_t)taddr)%pagesize;
+		m_length += ((size_t)taddr)%pagesize;
 		taddr  -= ((size_t)taddr)%pagesize;
 		addr=static_cast<void*>(taddr);
 
-		// check [addr,addr+length] in [_base,_base+_length]
-		if (taddr-tbase>=0 && taddr-tbase<=_length-length)
+		// check [addr,addr+m_length] in [m_base,m_base+m_length]
+		if (taddr-tbase>=0 && taddr-tbase<=m_length-m_length)
 			return true;
 		else 
 			return false;
 	}
 
-	string 	_path;
-	int 	_fd;
-	size_t 	_length;
-	off_t 	_offset;
-	void*   _base;
+	string 	m_path;
+	int 	m_fd;
+	size_t 	m_length;
+	off_t 	m_offset;
+	void*   m_base;
 };
 
-struct shm_allocator_t{
+struct ShmAllocator{
 	void* operator new(size_t size,void*buff){return buff;}
 	void  operator delete(void*buff,size_t size){ }
 };
-struct semid0_t{
+struct Semid0{
 
-	semid0_t(size_t slots)throw(nynn_error_t):_slot_max(slots)
+	Semid0(size_t slots)throw(NynnException):slot_max(slots)
 	{	
-		_semid=semget(IPC_PRIVATE,_slot_max,IPC_CREAT|IPC_EXCL|0700);
-		if (_semid==-1) THROW_ERROR;
+		semid=semget(IPC_PRIVATE,slot_max,IPC_CREAT|IPC_EXCL|0700);
+		if (semid==-1) throwNynnException(strerr(errno).c_str());
 		
-		uint16_t *array=new uint16_t[_slot_max];
-		std::fill(array,array+_slot_max,0);
-		if (semctl(_semid,0,SETALL,array)==-1)THROW_ERROR;
+		uint16_t *array=new uint16_t[slot_max];
+		std::fill(array,array+slot_max,0);
+		if (semctl(semid,0,SETALL,array)==-1)throwNynnException(strerr(errno).c_str());
 	}
 
-	~semid0_t(){}
+	~Semid0(){}
 
-	size_t get_slot_max()const{return _slot_max;}
-	int    get_semid()const {return _semid;}
+	size_t get_slot_max()const{return slot_max;}
+	int    get_semid()const {return semid;}
 	
-	int    _semid;		
-	size_t _slot_max;
+	int    semid;		
+	size_t slot_max;
 };
 
-struct semid1_t{
-	semid1_t(int semid):_semid(semid){}
+struct Semid1{
+	Semid1(int semid):semid(semid){}
 	
-	~semid1_t()
+	~Semid1()
 	{
-		if (semctl(_semid,0,IPC_RMID)==-1)THROW_ERROR;
+		if (semctl(semid,0,IPC_RMID)==-1)throwNynnException(strerr(errno).c_str());
 	}
 
-	int    _semid;
+	int    semid;
 };	
 
-class lockop_t {
+class Lockop {
 
 public:
 
-	lockop_t(int32_t id)throw(nynn_error_t):_id(id)
+	Lockop(int semid,int slot )throw(NynnException):semid(semid),slot(slot)
 	{
 
 		struct seminfo si;
-		if (semctl(0,0,IPC_INFO,&si)==-1)THROW_ERROR;
+		if (semctl(0,0,IPC_INFO,&si)==-1)throwNynnException(strerr(errno).c_str());
 		int semmsl=si.semmsl;
 		int semopm=si.semopm;
 		log_i("semmsl=%d",semmsl);
 		log_i("semopm=%d",semopm);
 		
-		int semid = _id >> 16;
-		int slot  = 0x0000ffff & _id;
 
 		struct semid_ds ds;
-		if (semctl(semid,0,IPC_STAT,&ds)!=0)THROW_ERROR;
+		if (semctl(semid,0,IPC_STAT,&ds)!=0)throwNynnException(strerr(errno).c_str());
 
-		if (slot>=ds.sem_nsems)THROW_ERROR_WITH_ERRNO(EINVAL);
+		if (slot>=ds.sem_nsems)throwNynnException(strerr(EINVAL).c_str());
 
 		struct sembuf sop;
 		sop.sem_op=-1;
 		sop.sem_num=slot;
 		sop.sem_flg=SEM_UNDO;
 		
-		if (semop(semid,&sop,1)!=0)THROW_ERROR;
+		if (semop(semid,&sop,1)!=0)throwNynnException(strerr(errno).c_str());
 	}
 
-	~lockop_t()throw(nynn_error_t)
+	~Lockop()throw(NynnException)
 	{
-		int semid = _id >> 16;
-		int slot  = 0x0000ffff & _id;
 
 		struct sembuf sop;
 		sop.sem_op=1;
 		sop.sem_num=slot;
 		
-		if (semop(semid,&sop,1)!=0)THROW_ERROR;
+		if (semop(semid,&sop,1)!=0)throwNynnException(strerr(errno).c_str());
 	}
 
 private:
 
 	//disallow copy.
-	lockop_t(const lockop_t&);
-	lockop_t& operator=(const lockop_t&);
+	Lockop(const Lockop&);
+	Lockop& operator=(const Lockop&);
 	//disallow created on free store(heap);
 	void*operator new(size_t);
 	void*operator new(size_t,void*);
-
-	uint32_t    _id;
+	int semid;
+	int slot;
 };
 
-struct shmid_t{
-	int _shmid;
-	size_t _length;
-	explicit shmid_t(size_t length)throw(nynn_error_t):
-		_shmid(0),_length(length)
+struct Shmid{
+	int m_shmid;
+	size_t m_length;
+	explicit Shmid(size_t m_length)throw(NynnException):
+		m_shmid(0),m_length(m_length)
 	{
-		_shmid=shmget(IPC_PRIVATE,_length,IPC_CREAT|IPC_EXCL|0700);
-		if (_shmid==-1)
-			THROW_ERROR;
+		m_shmid=shmget(IPC_PRIVATE,m_length,IPC_CREAT|IPC_EXCL|0700);
+		if (m_shmid==-1)
+			throwNynnException(strerr(errno).c_str());
 	}
-	~shmid_t(){}
-	int get_shmid()const{return _shmid;}
-	size_t get_length()const{return _length;}
+	~Shmid(){}
+	int get_shmid()const{return m_shmid;}
+	size_t getLength()const{return m_length;}
 
 private:
-	shmid_t(const shmid_t&);
-	shmid_t& operator=(const shmid_t&);
+	Shmid(const Shmid&);
+	Shmid& operator=(const Shmid&);
 };
 
-class shm_t{
+class Shm{
 public:
 
-	explicit shm_t(int shmid,size_t length=0)throw(nynn_error_t):
-		_shmid(shmid),_length(length),_base(0)
+	explicit Shm(int m_shmid,size_t m_length=0)throw(NynnException):
+		m_shmid(m_shmid),m_length(m_length),m_base(0)
 	{ 
-		_base=shmat(_shmid,NULL,0);
-		if(_base==(void*)-1)THROW_ERROR;
+		m_base=shmat(m_shmid,NULL,0);
+		if(m_base==(void*)-1)throwNynnException(strerr(errno).c_str());
 	}
 	
-	explicit shm_t(const shmid_t& id)throw(nynn_error_t):
-		_shmid(id._shmid),_length(id._length)
+	explicit Shm(const Shmid& id)throw(NynnException):
+		m_shmid(id.m_shmid),m_length(id.m_length)
 	{
-		_base=shmat(_shmid,NULL,0);
-		if(_base==(void*)-1)THROW_ERROR;
+		m_base=shmat(m_shmid,NULL,0);
+		if(m_base==(void*)-1)throwNynnException(strerr(errno).c_str());
 	}
 
-	~shm_t()
+	~Shm()
 	{
-		if(shmdt(_base)==-1)
-			THROW_ERROR;
+		if(shmdt(m_base)==-1)
+			throwNynnException(strerr(errno).c_str());
 
 		struct shmid_ds ds;
-		if (shmctl(_shmid,IPC_STAT,&ds)==-1)
-			THROW_ERROR;
+		if (shmctl(m_shmid,IPC_STAT,&ds)==-1)
+			throwNynnException(strerr(errno).c_str());
 
 		if (ds.shm_nattch>0)return;
-		if (shmctl(_shmid,IPC_RMID,NULL)==-1)
-			THROW_ERROR;
+		if (shmctl(m_shmid,IPC_RMID,NULL)==-1)
+			throwNynnException(strerr(errno).c_str());
 	}
 
-	void* get_base()const{return _base;}
-	size_t get_length()const{return _length;}
-	int   get_shmid()const{return _shmid;}
+	void* getBaseAddress()const{return m_base;}
+	size_t getLength()const{return m_length;}
+	int   get_shmid()const{return m_shmid;}
 private:
-	shm_t(const shm_t&);
-	shm_t& operator=(const shm_t&);
+	Shm(const Shm&);
+	Shm& operator=(const Shm&);
 
-	int    _shmid;
-	size_t _length;
-	void*  _base;
+	int    m_shmid;
+	size_t m_length;
+	void*  m_base;
 };
 
-class flock_t{
+class Flock{
 protected:
-	string _path;
-	int _fd;
+	string m_path;
+	int m_fd;
 
-	flock_t(const string& path)throw(nynn_error_t):_path(path){
-		if (!file_exist(_path.c_str()))
-			THROW_ERROR_WITH_ERRNO(ENOENT);
+	Flock(const string& m_path)throw(NynnException):m_path(m_path){
+		if (!file_exist(m_path.c_str()))
+			throwNynnException(strerr(ENOENT).c_str());
 
-		_fd=open(_path.c_str(),O_RDWR);
-		if (_fd==-1)
-			THROW_ERROR_WITH_ERRNO(ENOENT);
+		m_fd=open(m_path.c_str(),O_RDWR);
+		if (m_fd==-1)
+			throwNynnException(strerr(ENOENT).c_str());
 	}
 
 public:
-	virtual void lock(off_t start,off_t length)=0;
-	virtual void unlock(off_t start,off_t length)=0;
-	virtual bool trylock(off_t start,off_t length)=0;
-	virtual ~flock_t() { close(_fd);}
+	virtual void lock(off_t start,off_t m_length)=0;
+	virtual void unlock(off_t start,off_t m_length)=0;
+	virtual bool trylock(off_t start,off_t m_length)=0;
+	virtual ~Flock() { close(m_fd);}
 };
 
-class frlock_t:public flock_t{
+class Frlock:public Flock{
 public:
-	frlock_t(const string& path):flock_t(path){}
-	~frlock_t(){}
-	virtual void lock(off_t start,off_t length)
+	Frlock(const string& m_path):Flock(m_path){}
+	~Frlock(){}
+	virtual void lock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_RDLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLKW,&op)!=0)
-			THROW_ERROR;
+		if (fcntl(m_fd,F_SETLKW,&op)!=0)
+			throwNynnException(strerr(errno).c_str());
 	}
 	
-	virtual void unlock(off_t start,off_t length)
+	virtual void unlock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_UNLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLKW,&op)!=0)
-			THROW_ERROR;
+		if (fcntl(m_fd,F_SETLKW,&op)!=0)
+			throwNynnException(strerr(errno).c_str());
 
 	}
-	virtual bool trylock(off_t start,off_t length)
+	virtual bool trylock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_RDLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLK,&op)==0) return true;
+		if (fcntl(m_fd,F_SETLK,&op)==0) return true;
 		if (errno==EAGAIN) return false;
-		THROW_ERROR;
+		throwNynnException(strerr(errno).c_str());
 	}
 };
 
-class fwlock_t:public flock_t{
+class Fwlock:public Flock{
 public:	
-	fwlock_t(const string&path):flock_t(path){}
-	~fwlock_t(){} 
-	virtual void lock(off_t start,off_t length)
+	Fwlock(const string&path):Flock(path){}
+	~Fwlock(){} 
+	virtual void lock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_WRLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLKW,&op)!=0)
-			THROW_ERROR;
+		if (fcntl(m_fd,F_SETLKW,&op)!=0)
+			throwNynnException(strerr(errno).c_str());
 	}
 
-	virtual void unlock(off_t start,off_t length)
+	virtual void unlock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_UNLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLKW,&op)!=0)
-			THROW_ERROR;
+		if (fcntl(m_fd,F_SETLKW,&op)!=0)
+			throwNynnException(strerr(errno).c_str());
 	}
 
-	virtual bool trylock(off_t start,off_t length)
+	virtual bool trylock(off_t start,off_t m_length)
 	{
 		struct flock op;
 		op.l_type=F_WRLCK;
 		op.l_start=start;
-		op.l_len=length;
+		op.l_len=m_length;
 		op.l_whence=SEEK_SET;
-		if (fcntl(_fd,F_SETLK,&op)==0) return true;
+		if (fcntl(m_fd,F_SETLK,&op)==0) return true;
 		if (errno==EAGAIN) return false;
-		THROW_ERROR;
+		throwNynnException(strerr(errno).c_str());
 	}
 };
 
-class raii_flock_t{
+class FlockRAII{
 public:
-	explicit raii_flock_t(flock_t* lck):_lock(lck){_lock->lock(0,0);}
-			~raii_flock_t(){_lock->unlock(0,0);}
+	explicit FlockRAII(Flock* lck):lock(lck){lock->lock(0,0);}
+			~FlockRAII(){lock->unlock(0,0);}
 private:
-	flock_t *_lock;
+	Flock *lock;
 };
 
-string& strerr(int errnum,string& s)
+inline string strerr(int errnum)
 {
-	char errbuff[ERR_BUFF_SIZE];
-	memset(errbuff,0,ERR_BUFF_SIZE);
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+	char buff[ERR_BUFF_SIZE];
+	string s;
+	s.reserve(ERR_BUFF_SIZE);
+	memset(buff,0,ERR_BUFF_SIZE);
+#if (POSIX_C_SOURCE >= 200112L || XOPEN_SOURCE >= 600) && ! GNU_SOURCE
 	//XSI-compliant
-	if (strerror_r(ne_errnum,errbuff,ERR_BUFF_SIZE)==0)
-		s=errbuff;
+	if (strerror_r(errnum,buff,ERR_BUFF_SIZE)==0)
+		s=buff;
 	else
 		s="Unknown Error!";
 #else
 	//GNU-specific
-	char *msg=strerror_r(errnum,errbuff,ERR_BUFF_SIZE);
+	char *msg=strerror_r(errnum,buff,ERR_BUFF_SIZE);
 	if (msg!=NULL)
 		s=msg;
 	else
 		s="Unknown Error!";
 #endif
+	return s;
 }
 
-void log_debug(ostream&out,const char*file,const int line,
+inline void log_debug(ostream&out,const char*file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,...)
 {
-#ifdef _DEBUG
+#ifdef DEBUG
 	va_list ap;
 	va_start(ap,fmt);
 	vlog(out,file,line,function,level,errnum,fmt,ap);
@@ -658,7 +767,7 @@ void log_debug(ostream&out,const char*file,const int line,
 #endif
 }
 
-void log(ostream& out,const char*file,const int line,
+inline void log(ostream& out,const char*file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,...)
 {
 	va_list ap;
@@ -668,7 +777,7 @@ void log(ostream& out,const char*file,const int line,
 
 }
 
-void vlog(ostream &out,const char *file,const int line,
+inline void vlog(ostream &out,const char *file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,va_list ap)
 {
 	const char* logs[5]={"INFO","WARN","ERROR","ASSERT","DEBUG"};
@@ -681,7 +790,7 @@ void vlog(ostream &out,const char *file,const int line,
 		<<"-"<<function<<"():";
 	if (errnum!=0){
 		pack<<"["<<errnum<<"]"
-			<<strerr(errnum,s);
+			<<strerr(errnum);
 	}else{
 		vsnprintf(buff,VSNPRINTF_BUFF_SIZE,fmt,ap);
 		buff[VSNPRINTF_BUFF_SIZE-1]='\0';
@@ -691,7 +800,7 @@ void vlog(ostream &out,const char *file,const int line,
 	out<<pack.str()<<endl;
 }
 
-int rand_int()
+inline int rand_int()
 {
 	struct timespec ts;
 	ts.tv_sec=0;
@@ -702,6 +811,48 @@ int rand_int()
 	unsigned seed=static_cast<unsigned>(0x0ffffffffl & ts.tv_nsec);
 	return rand_r(&seed);
 }
+
+class Monitor{
+	pthread_mutex_t m_mutex;
+public:
+	Monitor(){pthread_mutex_init(&this->m_mutex,NULL);}
+	~Monitor(){pthread_mutex_destroy(&this->m_mutex);}
+	pthread_mutex_t* get(){return &this->m_mutex;}
+};
+class RWLock{
+	pthread_rwlock_t m_rwlock;
+public:
+	RWLock() { pthread_rwlock_init(&this->m_rwlock,NULL);}
+	~RWLock() { pthread_rwlock_destroy(&this->m_rwlock);}
+	pthread_rwlock_t* get() {return &this->m_rwlock; }
+	
+};
+
+class Synchronization{
+	Monitor *m_monitor;
+public:
+	Synchronization(Monitor* m):m_monitor(m){pthread_mutex_lock(m_monitor->get());}
+	~Synchronization(){pthread_mutex_unlock(m_monitor->get());}
+};	
+class SharedSynchronization{
+	RWLock *m_lock;
+public:
+	SharedSynchronization(RWLock *lock):m_lock(lock)
+	{ 
+		pthread_rwlock_rdlock(m_lock->get());
+	}
+	~SharedSynchronization(){pthread_rwlock_unlock(m_lock->get());}
+};
+
+class ExclusiveSynchronization{
+	RWLock *m_lock;
+public:
+	ExclusiveSynchronization(RWLock *lock):m_lock(lock)
+	{ 
+		pthread_rwlock_wrlock(m_lock->get());
+	}
+	~ExclusiveSynchronization(){pthread_rwlock_unlock(m_lock->get());}
+};
 
 }}}
 #endif

@@ -1,21 +1,26 @@
-vpath %.cc ../src ../test
+vpath %.cc ../src ../test ../tool
+vpath %.cpp ../src/ ../test ../tool
 ifdef dbg
 DEBUG:=-DDEBUG -g -ggdb3 -rdynamic
 endif
-CXXFLAGS+= -std=c++0x -I ../inc -L ../lib -pthread -lrt -lnynn $(DEBUG)
-testContext:testContext.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-testProcessOnce:testProcessOnce.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-testlocal:testlocal.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-testMapFile:testMapFile.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-testNynnError:testNynnError.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o:%.cc
-	$(CXX) $(CXXFLAGS) -c -o $@ $^
+
+BOOST_DIR = /usr/include/boost
+THRIFT_DIR = /usr/local/include/thrift
+LIB_DIR = /usr/local/lib
+
+GEN_SRC = DataX.cpp DataXMaster.cpp DataXPeer.cpp\
+		  nynn_mm_constants.cpp nynn_mm.cpp nynn_mm_types.cpp 
+
+datax: dataxserv dataxceiv
+
+dataxserv: DataXServer.cpp ${GEN_SRC}
+	g++  --std=c++0x -o $@ -I${THRIFT_DIR} -I${BOOST_DIR} -I../src -I../inc -I. -L${LIB_DIR} $^ -lthrift -lthriftnb -levent
+
+dataxceiv: DataXceiver.cpp ${GEN_SRC}
+	g++  --std=c++0x -o $@ -I${THRIFT_DIR} -I${BOOST_DIR} -I../src -I../inc -I. -L${LIB_DIR} $^ -lthrift -lthriftnb -levent
+creatchk:createChunk.cc
+	g++ --std=c++0x -o $@ $^ -I../inc
 
 clean:
-	rm -fr *.o
+	rm -fr `ls|grep -vi makefile`

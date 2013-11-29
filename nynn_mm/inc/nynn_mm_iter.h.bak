@@ -1,0 +1,189 @@
+#ifndef NYNN_MM_ITER_BY_SATANSON
+#define NYNN_MM_ITER_BY_SATANSON
+#include<nynn_mm_common.h>
+#include<nynn_mm_chunk.h>
+#include<nynn_mm_cache.h>
+#include<nynn_mm_meta.h>
+#include<nynn_mm_context.h>
+
+using namespace nynn::mm::common;
+using namespace nynn::mm;
+namespace nynn{namespace mm{
+template<typename T>
+class iter_t;
+class vertex_iter_t;
+class vertex_local_iter_t;
+class vertex_all_iter_t;
+class edge_iter_t;
+
+template<typename T>
+class iter_t{
+protected:
+	T _next;
+public:
+	iter_t();
+	virtual bool has_next()=0;
+	virtual T* next()=0;
+	virtual ~iter_t(){}
+};
+
+class vertex_iter_t:public iter_t<vertex_t>{
+public:
+	vertex_iter_t();
+	virtual bool has_next()=0;
+	virtual vertex_t* next()=0;
+	virtual ~vertex_iter_t(){}
+
+};
+
+class vertex_local_iter_t:public vertex_iter_t{
+	enum{VERTEX_BUF_CAPACITY=128};
+public:
+	explicit vertex_local_iter_t():_vtxbuf(VERTEX_BUF_CAPACITY),
+		_chk_cursor(0),_vtx_cursor(0),_chk_num(0),_vtx_num(0)
+	{
+		_ctx=context_t::get_context();
+		_meta=_ctx->get_meta();
+
+		fetch_local_data();
+	}
+
+	bool has_next()
+	{
+		if (_chk_cursor==_chk_num && _vtx_cursor==_vtx_num && _vtxbuf_iter==_vtxbuf.end())
+			return false;
+		return true;
+	}
+	vertex_t* next()
+	{
+		if (has_next()){
+			if (_vtxbuf_iter==_vtxbuf.end())fetch_local_data();
+			return &*_vtxbuf_iter++;
+		}else {
+			return NULL;
+		}
+	}
+
+	~vertex_local_iter_t();
+private:
+	void fetch_local_data(){
+		//lock meta 
+		lockop_t get(_meta->get_metasemid(),0);
+	
+		//fetch rest vertices from old chunk to vertex buffer.
+		if (_vtx_cursor!=_vtx_num)
+		{
+			//copy vertices from chunk to vertice buffer.
+			//set vertice iterator.
+			_vtxbuf.resize(std::min<size_t>(_vtx_num-_vtx_cursor,VERTEX_BUF_CAPACITY));
+			vertex_t *vtx_begin=_chunk->get_vertex(_vtx_cursor);
+			_vtxbuf_iter=_vtxbuf.begin();
+			std::copy(vtx_begin,vtx_begin+_vtxbuf.size(),_vtxbuf_iter);
+			//move vertex cursor forward.
+			_vtx_cursor+=_vtxbuf.size();
+			return ;
+		}
+
+		//fetch vertices from new chunk to vertex buffer.
+		_chk_num = _meta->get_chunkentrynum();
+		while(_chk_cursor<_chk_num){
+			chunk_entry_t* chk_entry=_meta->get_chunkentry(_chk_cursor);
+			//check chunk if stored in local.
+			if (chk_entry->_flag & CHUNK_ENTRY_FLAG_LOCAL){
+				//get first local chunk.
+				_chunk=_ctx->get_chunk(chk_entry->_where);
+				_vtx_cursor=0;
+				//get number of vertices in the local chunk.
+				_vtx_num=_chunk->get_vertexnum();
+				//copy vertices from chunk to vertice buffer.
+				//set vertice iterator.
+				_vtxbuf.resize(std::min<size_t>(_vtx_num-_vtx_cursor,VERTEX_BUF_CAPACITY));
+				vertex_t *vtx_begin=_chunk->get_vertex(_vtx_cursor);
+				_vtxbuf_iter=_vtxbuf.begin();
+				std::copy(vtx_begin,vtx_begin+_vtxbuf.size(),_vtxbuf_iter);
+				//move vertex cursor forward.
+			   	_vtx_cursor+=_vtxbuf.size();
+				return;
+			}
+			_chk_cursor++;
+		}
+		
+		//no local chunk present.
+		if (_chk_cursor==_chk_num){
+			//invalidate _vtxbuf_iter;
+			_vtx_num=0;
+			_vtx_cursor=0;
+			_vtxbuf_iter=_vtxbuf.end();
+		}
+
+	}
+
+	context_t *_ctx;
+	meta_type *_meta;
+	chunk_type *_chunk;
+	vector<vertex_t> _vtxbuf;
+	vector<vertex_t>::iterator _vtxbuf_iter;
+	size_t 	   _chk_num;
+	size_t     _vtx_num;
+	size_t     _chk_cursor;
+	size_t     _vtx_cursor;
+};
+
+class vertex_all_iter_t:public vertex_iter_t{
+public:
+	vertex_all_iter_t(){
+
+	}
+	bool has_next()
+	{
+
+	}
+
+	vertex_t* next()
+	{
+
+	}
+
+	~vertex_all_iter_t();
+
+};
+
+class edge_iter_t:public iter_t<edge_t>{
+public:
+	explicit edge_iter_t(vertex_t vtx):_vtx(vtx),_edge_cursor(0)
+	{
+		_ctx=context_t::get_context();
+		_meta=_ctx->get_meta();
+		_cache=_ctx->get_cache();
+
+	}
+
+	explicit edge_iter_t(uint64_t vtxno):_edge_cursor(0)
+	{
+
+	}
+
+	bool has_next()
+	{
+
+	}
+
+	edge_t* next()
+	{
+
+	}
+
+	~edge_iter_t();
+private:
+	context_t *_ctx;
+	meta_type *_meta;
+	chunk_type *_chunk;
+	cache_type *_cache;
+	vertex_t   _vtx;
+
+	block_t<>  _blk;
+	size_t 	 _edge_cursor;
+};
+
+}}
+#endif
