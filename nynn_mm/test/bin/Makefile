@@ -1,18 +1,24 @@
-vpath %.cc ../src
+vpath %.cc ../src 
 ifdef dbg
 DEBUG:=-DDEBUG -g -ggdb3 -rdynamic
 endif
-all=testMultiAccessSubgraph testAccessSubgraph formatSubgraph testSynchronizaton
+FLAGS:= -I../inc -I../../inc/ -lrt -lpthread -std=c++0x
+progs:= formatSubgraph testAccessSubgraph testMultiAccessSubgraph \
+        testSubgraphCache testSynchronization testMultiAccessCache
 
-all:${all}
-testMultiAccessSubgraph:testMultiAccessSubgraph.cc
-	g++ $(DEBUG) -o $@ $^  -I../../inc/ -I../inc/ -lpthread -lrt
-testAccessSubgraph:testAccessSubgraph.cc
-	g++ $(DEBUG) -o $@ $^  -I../../inc/ -I../inc/ -lpthread -lrt
+all:$(progs)
+
+testMultiAccessCache:testMultiAccessCache.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
 formatSubgraph:formatSubgraph.cc
-	g++ $(DEBUG) -o $@ $^  -I../../inc/ -I../inc/ -lpthread -lrt
-testSynchronizaton:testSynchronization.cc
-	g++ $(DEBUG) -o $@ $^  -I../../inc/ -I../inc/ -lpthread -lrt
-.cc.o: 
-	g++ $(DEBUG) -c $@ $^  -I../../inc/ -I../inc/ -lpthread -lrt
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
+testSynchronization:testSynchronization.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
+testAccessSubgraph:testAccessSubgraph.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
+testMultiAccessSubgraph:testMultiAccessSubgraph.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
+testSubgraphCache:testSubgraphCache.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
+
 

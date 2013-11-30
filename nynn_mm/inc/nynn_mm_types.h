@@ -1,8 +1,7 @@
 #ifndef NYNN_MM_TYPES_H_BY_SATANSON
 #define NYNN_MM_TYPES_H_BY_SATANSON
-
+#include<nynn_mm_common.h>
 using namespace nynn::mm::common;
-using namespace nynn::mm;
 
 namespace nynn{namespace mm{
 	

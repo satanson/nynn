@@ -25,7 +25,7 @@ void* worker(void* arg)
 		}
 		for(int i=0;i<M;i++){
 			sg->release(blknos[N-1-i]);
-			cout<<"thread#"<<pthread_self()<<"block#"<<blknos[i]<<":writeBlock"<<endl;
+			cout<<"thread#"<<pthread_self()<<"block#"<<blknos[i]<<":release"<<endl;
 		}
 	}catch(NynnException &err){
 		err.printBacktrace();
