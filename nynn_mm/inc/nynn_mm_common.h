@@ -61,11 +61,6 @@ enum{
 	LOG_ERROR=2,
 	LOG_ASSERT=3,
 	LOG_DEBUG=4,
-	//tag
-	INVALID_TAG=0xffffffff,
-	LOCK_TAG=0xdeadbeef,
-	RWLOCK_TAG=0xfacefeed,
-	SHM_TAG=0xadeaddad,
 
 	SEMGET_TRY_MAX=1000,
 	//rwlock type
@@ -103,6 +98,8 @@ void log(ostream& out,const char*file,const int line,
 int rand_int();
 bool file_exist(const string& m_path);
 uint32_t gethostaddr(string &hostname);
+time_t str2time(const char*str);
+string time2str(time_t t);
 
 char* ltrim(const char *chars,const char *src, char *dest);
 char* rtrim(const char *chars,const char *src, char *dest);
@@ -853,6 +850,21 @@ public:
 	}
 	~ExclusiveSynchronization(){pthread_rwlock_unlock(m_lock->get());}
 };
+string time2str(time_t t)
+{
+	struct tm tt;
+	char buff[32];
+	strftime(buff,sizeof(buff),"%Y-%m-%d %T",gmtime_r(&t,&tt));
+	return string(buff);
+}
+
+time_t str2time(const char* str)
+{
+	struct tm tt;
+	time_t t;
+	strptime(str,"%Y-%m-%d %T",&tt);
+	return mktime(&tt);
+}
 
 }}}
 #endif

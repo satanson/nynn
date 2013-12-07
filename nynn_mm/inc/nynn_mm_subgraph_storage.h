@@ -14,105 +14,111 @@ template<
 	uint32_t LOG2_OVERFLOW_BLOCKSZ,
 	uint32_t OVERFLOW_BLOCKNO_MIN,
 	uint32_t BLOCKNO_MAX,
-	uint32_t VERTEX_INTERVAL_WIDTH,
+	uint32_t LOG2_VERTEX_INTERVAL_WIDTH,
 	uint32_t OVERFLOW_NUM,
 	uint32_t MONITOR_NUM
->class SubgraphStorage;
+>class SubgraphStorageType;
 
 
 /* blkno(block number)space is [0,BLOCKNO_MAX).
  * BLOCKNO_MAX<=(1<<32)-1.
- * INVALID_BLOCKNO=(1<<32)-1	 
- * [0,OVERFLOW_BLOCKNO_MIN) mapped into volume.
- * [OVERFLOW_BLOCKNO_MIN,BLOCKNO_MAX) mapped into overflow.
- *  */
+* INVALID_BLOCKNO=(1<<32)-1	 
+* [0,OVERFLOW_BLOCKNO_MIN) mapped into volume.
+* [OVERFLOW_BLOCKNO_MIN,BLOCKNO_MAX) mapped into overflow.
+*  */
 template<
-	uint32_t LOG2_BLOCKSZ,
-	uint32_t LOG2_OVERFLOW_BLOCKSZ,
-	uint32_t OVERFLOW_BLOCKNO_MIN,
-	uint32_t BLOCKNO_MAX,
-	uint32_t VERTEX_INTERVAL_WIDTH,
-	uint32_t OVERFLOW_NUM,
-	uint32_t MONITOR_NUM
->class SubgraphStorage{
+uint32_t LOG2_BLOCKSZ,
+uint32_t LOG2_OVERFLOW_BLOCKSZ,
+uint32_t OVERFLOW_BLOCKNO_MIN,
+uint32_t BLOCKNO_MAX,
+uint32_t LOG2_VERTEX_INTERVAL_WIDTH,
+uint32_t OVERFLOW_NUM,
+uint32_t MONITOR_NUM
+>class SubgraphStorageType{
 public:
-	static uint32_t const INVALID_BLOCKNO=~0L;
-	static uint32_t const INVALID_VERTEXNO=~0L;
-	static uint32_t const BLOCKSZ=1<<LOG2_BLOCKSZ;
-	static uint32_t const OVERFLOW_BLOCKSZ=1<<LOG2_OVERFLOW_BLOCKSZ;
-	static uint32_t const OVERFLOW_BLOCKNO_MASK=(1<<LOG2_OVERFLOW_BLOCKSZ-LOG2_BLOCKSZ)-1;
-	static uint32_t const VOLUME_SIZE=OVERFLOW_BLOCKNO_MIN*BLOCKSZ;
+static uint32_t const INVALID_BLOCKNO=~0L;
+static uint32_t const INVALID_VERTEXNO=~0L;
+static uint32_t const BLOCKSZ=1<<LOG2_BLOCKSZ;
+static uint32_t const OVERFLOW_BLOCKSZ=1<<LOG2_OVERFLOW_BLOCKSZ;
+static uint32_t const OVERFLOW_BLOCKNO_MASK=(1<<LOG2_OVERFLOW_BLOCKSZ-LOG2_BLOCKSZ)-1;
+static uint32_t const VOLUME_SIZE=OVERFLOW_BLOCKNO_MIN*BLOCKSZ;
+static uint32_t const VERTEX_INTERVAL_WIDTH=1<<LOG2_VERTEX_INTERVAL_WIDTH;
 
-	typedef nynn::mm::BlockType<BLOCKSZ> Block;
+typedef nynn::mm::BlockType<BLOCKSZ> Block;
 
-	struct SuperBlock
-	{ 
-		struct Data{
-			uint32_t m_numOfFreeBlks;
-			uint32_t m_headBlkno;
-			uint32_t m_supBlkno;
-			Vertex   m_vertices[VERTEX_INTERVAL_WIDTH];
-		}*m_data;
+struct SuperBlock
+{ 
+	struct Data{
+		uint32_t m_numOfFreeBlks;
+		uint32_t m_headBlkno;
+		uint32_t m_supBlkno;
+		Vertex   m_vertices[VERTEX_INTERVAL_WIDTH];
+	}*m_data;
 
-		explicit SuperBlock(void *superblk=NULL ) { loadData(superblk); }
-		
-		static uint32_t const SIZE=sizeof(Data);
-		void     loadData(void*superblk) { m_data=static_cast<Data*>(superblk); }
-		uint32_t getSupBlkno()const { return m_data->m_supBlkno; }
-		void     setSupBlkno(uint32_t blkno){ m_data->m_supBlkno=blkno; }
-		uint32_t getHeadBlkno()const { return m_data->m_headBlkno; }
-		void     setHeadBlkno(uint32_t blkno) { m_data->m_headBlkno=blkno; }
-		void     resetNumberOfFreeBlks() { m_data->m_numOfFreeBlks=0; }
-		void     incNumberOfFreeBlks() { m_data->m_numOfFreeBlks++; }
-		void     decNumberOfFreeBlks() { m_data->m_numOfFreeBlks--; }
-		uint32_t getNumberOfFreeBlks() { return m_data->m_numOfFreeBlks;}
-		uint32_t getMinVtxno()const { return m_data->m_vertices[0].m_source; }
-		
-		void     setMinVtxno(uint32_t minVtxno)
-		{
-			if (minVtxno%VERTEX_INTERVAL_WIDTH!=0){
-				throwNynnException("Minimal vertex no must be multiple of VERTEX_INTERVAL_WIDTH!");
-			}			
-			for (uint32_t vtxno=minVtxno;vtxno<minVtxno+VERTEX_INTERVAL_WIDTH;vtxno++){
-				m_data->m_vertices[vtxno-minVtxno]=Vertex(vtxno);
-			}
+	explicit SuperBlock(void *superblk=NULL ) { loadData(superblk); }
+	
+	static uint32_t const SIZE=sizeof(Data);
+	void     loadData(void*superblk) { m_data=static_cast<Data*>(superblk); }
+	uint32_t getSupBlkno()const { return m_data->m_supBlkno; }
+	void     setSupBlkno(uint32_t blkno){ m_data->m_supBlkno=blkno; }
+	uint32_t getHeadBlkno()const { return m_data->m_headBlkno; }
+	void     setHeadBlkno(uint32_t blkno) { m_data->m_headBlkno=blkno; }
+	void     resetNumberOfFreeBlks() { m_data->m_numOfFreeBlks=0; }
+	void     incNumberOfFreeBlks() { m_data->m_numOfFreeBlks++; }
+	void     decNumberOfFreeBlks() { m_data->m_numOfFreeBlks--; }
+	uint32_t getNumberOfFreeBlks() { return m_data->m_numOfFreeBlks;}
+	
+	void     setMinVtxno(uint32_t minVtxno)
+	{
+		if (minVtxno%VERTEX_INTERVAL_WIDTH!=0){
+			throwNynnException("Minimal vertex no must be multiple of VERTEX_INTERVAL_WIDTH!");
+		}			
+		for (uint32_t vtxno=minVtxno;vtxno<minVtxno+VERTEX_INTERVAL_WIDTH;vtxno++){
+			m_data->m_vertices[vtxno-minVtxno]=Vertex(vtxno);
 		}
+	}
+	
+	uint32_t getMinVtxno()const { return m_data->m_vertices[0].m_source; }
+	uint32_t getMaxVtxno()const { return getMinVtxno()+VERTEX_INTERVAL_WIDTH-1;}
 
-		bool containVertex(uint32_t vtxno)
-		{
-			uint32_t minVtxno=getMinVtxno();
-			return minVtxno<=vtxno && vtxno<minVtxno+VERTEX_INTERVAL_WIDTH;
+	bool containVertex(uint32_t vtxno)
+	{
+		return getMinVtxno()<=vtxno && vtxno<=getMaxVtxno();
+	}
+
+	Vertex& getVertex(uint32_t vtxno){
+		if (!containVertex(vtxno)){
+			throwNynnException("No specified vertex is found in this subgraph!");
 		}
+		return m_data->m_vertices[vtxno-getMinVtxno()];			
+	}
 
-		Vertex& getVertex(uint32_t vtxno){
-			if (!containVertex(vtxno)){
-				throwNynnException("No specified vertex is found in this subgraph!");
-			}
-			return m_data->m_vertices[vtxno-getMinVtxno()];			
-		}
+	uint32_t size(uint32_t vtxno) { return getVertex(vtxno).m_size; }
+	void     resize(uint32_t vtxno,uint32_t sz) { return getVertex(vtxno).m_size=sz; }
 
-		uint32_t getNumberOfEdgesByVtxno(uint32_t vtxno) { return getVertex(vtxno).m_nedges; }
-		uint32_t getHeadBlknoByVtxno(uint32_t vtxno) { return getVertex(vtxno).m_blkno; }
-		uint32_t getDataByVtxno(uint32_t vtxno) { return getVertex(vtxno).m_data; }
+	uint32_t getFirstBlkno(uint32_t vtxno) { return getVertex(vtxno).m_blkno; }
+	void setFirstBlkno(uint32_t vtxno,uint32_t blkno) { getVertex(vtxno).m_blkno=blkno; }
+	uint32_t getData(uint32_t vtxno) { return getVertex(vtxno).m_data; }
+	void setData(uint32_t vtxno,uint32_t data) { getVertex(vtxno).m_data=data; } 
+};
+
+struct Overflow{
+	struct OverflowEntry
+	{
+		uint32_t m_overflowBlkno;
+		uint32_t m_hit;
+		void*    m_overflowBlk;
+		OverflowEntry(uint32_t no=INVALID_BLOCKNO,void* addr=0):
+			m_overflowBlkno(no),m_hit(0),m_overflowBlk(addr){}
 	};
+	OverflowEntry m_table[OVERFLOW_NUM];
 
-	struct Overflow{
-		struct OverflowEntry
-		{
-			uint32_t m_overflowBlkno;
-			uint32_t m_hit;
-			void*    m_overflowBlk;
-			OverflowEntry(uint32_t no=INVALID_BLOCKNO,void* addr=0):
-				m_overflowBlkno(no),m_hit(0),m_overflowBlk(addr){}
-		};
-		OverflowEntry m_table[OVERFLOW_NUM];
-
-		static uint32_t const SIZE=OVERFLOW_NUM;
-		static uint32_t mapping(uint32_t x)
-		{
-			uint32_t y=x;
-			y  -= OVERFLOW_BLOCKNO_MIN;
-			y >>= LOG2_OVERFLOW_BLOCKSZ-LOG2_BLOCKSZ;
+	static uint32_t const SIZE=OVERFLOW_NUM;
+	static uint32_t mapping(uint32_t x)
+	{
+		uint32_t y=x;
+		y  -= OVERFLOW_BLOCKNO_MIN;
+		y >>= LOG2_OVERFLOW_BLOCKSZ-LOG2_BLOCKSZ;
 			y  %= Overflow::SIZE;
 			return y;
 		}	
@@ -141,7 +147,7 @@ public:
 
 
 //------------------------------------------------------------------------------
-	SubgraphStorage(const string &basedir):m_basedir(basedir)
+	SubgraphStorageType(const string &basedir):m_basedir(basedir)
 	{
 		try{
 			// initialize mutexes.
@@ -198,23 +204,53 @@ public:
 		releaseRaw(blkno);
 	}
 
-	void readBlock(uint32_t blkno,Block& blk)
+	Block*  getBlock(uint32_t blkno)
+	{
+		if (isFlat(blkno)) {
+			return getVolumeBlock(blkno);
+		}else if (isOverflow(blkno) && blkno<m_superblk.getSupBlkno() ){
+			void *overflowBlk=getOverflowBlock(blkno);
+			if (overflowBlk==NULL){
+				//replace old overflow block with new one.
+				MmapFile mf(getOverflowBlkPath(blkno));
+				overflowBlk=mf.getBaseAddress();
+				setOverflowBlock(blkno,overflowBlk);
+			}
+			return static_cast<Block*>(overflowBlk)+(blkno&OVERFLOW_BLOCKNO_MASK);
+		}else {
+			return NULL;
+		}
+	}
+	
+
+	void readBlock(uint32_t blkno,Block*blk)
 	{
 		nynn::mm::common::SharedSynchronization ss(&m_superblkRWLock);
 		nynn::mm::common::Synchronization s(&m_monitors[blkno%MONITOR_NUM]);
 		Block *srcBlk=getBlock(blkno);
 		if (srcBlk==NULL)throwNynnException("Fail to get specified block(getBlock)!");
-		memcpy(&blk,srcBlk,sizeof(Block));
+		memcpy(blk,srcBlk,sizeof(Block));
 	}
 	
-	void writeBlock(uint32_t blkno,Block& blk)
+	void writeBlock(uint32_t blkno,Block*blk)
 	{
 		nynn::mm::common::SharedSynchronization ss(&m_superblkRWLock);
 		nynn::mm::common::Synchronization s(&m_monitors[blkno%MONITOR_NUM]);
 		Block *destBlk=getBlock(blkno);
 		if (destBlk==NULL)throwNynnException("Fail to get specified block(getBlock)!");
-		memcpy(destBlk,&blk,sizeof(Block));
+		memcpy(destBlk,blk,sizeof(Block));
 	}
+
+	uint32_t getMinVtxno() { return m_superblk.getMinVtxno(); }
+	uint32_t getMaxVtxno() { return m_superblk.getMaxVtxno(); }
+	bool     containVertex(uint32_t vtxno) { return m_superblk.containVertex(); }
+	//following 6 function must be synchronizaton by caller.
+	uint32_t size(uint32_t vtxno) { return m_superblk.size(vtxno);}
+	void     resize(uint32_t vtxno,uint32_t sz) { m_superblk.resize(vtxno,sz);}
+	uint32_t getFirstBlkno(uint32_t vtxno) { return m_superblk.getFirstBlkno(vtxno); }
+	void     setFirstBlkno(uint32_t vtxno,uint32_t blkno) { m_superblk.setFirstBlkno(vtxno,blkno); }
+	uint32_t getData(uint32_t vtxno) { return m_superblk.getData(vtxno); }
+	void     setData(uint32_t vtxno,uint32_t data) { m_superblk.setData(vtxno,data); }
 
 	/*"SuperBlock" /path/to/basedir/superblock.dat
 	 *"Volume"     /path/to/basedir/volume.dat
@@ -236,14 +272,14 @@ public:
 			void *superblk = superblkFile.getBaseAddress();
 			void *volume = volumeFile.getBaseAddress();
 
-			SubgraphStorage subgraph(path,superblk,volume);	
+			SubgraphStorageType subgraph(path,superblk,volume);	
 		}catch(NynnException &err){
 			throwNynnException(err.what());
 		}
 	}
 
 private:
-	SubgraphStorage(const string &basedir,void* superblk,void* volume)
+	SubgraphStorageType(const string &basedir,void* superblk,void* volume)
 	try
 	:m_basedir(basedir),m_superblk(superblk),m_volume(volume)
 	{
@@ -286,25 +322,6 @@ private:
 	{ 
 		return BLOCKNO_MAX<=blkno<=INVALID_BLOCKNO; 
 	} 
-
-	Block*  getBlock(uint32_t blkno)
-	{
-		if (isFlat(blkno)) {
-			return getVolumeBlock(blkno);
-		}else if (isOverflow(blkno) && blkno<m_superblk.getSupBlkno() ){
-			void *overflowBlk=getOverflowBlock(blkno);
-			if (overflowBlk==NULL){
-				//replace old overflow block with new one.
-				MmapFile mf(getOverflowBlkPath(blkno));
-				overflowBlk=mf.getBaseAddress();
-				setOverflowBlock(blkno,overflowBlk);
-			}
-			return static_cast<Block*>(overflowBlk)+(blkno&OVERFLOW_BLOCKNO_MASK);
-		}else {
-			return NULL;
-		}
-	}
-	
 
 	string   getOverflowBlkPath(uint32_t blkno)
 	{

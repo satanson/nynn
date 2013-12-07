@@ -18,9 +18,9 @@ void* worker(void* arg)
 		}
 		for(int i=0;i<M;i++){
 			Block blk;
-			sg->readBlock(blknos[i],blk);
+			sg->readBlock(blknos[i],&blk);
 			cout<<"thread#"<<pthread_self()<<"block#"<<blknos[i]<<":readBlock"<<endl;
-			sg->writeBlock(blknos[i],blk);
+			sg->writeBlock(blknos[i],&blk);
 			cout<<"thread#"<<pthread_self()<<"block#"<<blknos[i]<<":writeBlock"<<endl;
 		}
 		for(int i=0;i<M;i++){
@@ -30,7 +30,6 @@ void* worker(void* arg)
 	}catch(NynnException &err){
 		err.printBacktrace();
 	}
-
 }
 
 int main(int argc,char**argv)

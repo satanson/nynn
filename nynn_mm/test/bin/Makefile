@@ -4,10 +4,13 @@ DEBUG:=-DDEBUG -g -ggdb3 -rdynamic
 endif
 FLAGS:= -I../inc -I../../inc/ -lrt -lpthread -std=c++0x
 progs:= formatSubgraph testAccessSubgraph testMultiAccessSubgraph \
-        testSubgraphCache testSynchronization testMultiAccessCache
+        testSubgraphCache testSynchronization testMultiAccessCache \
+		testBlock
 
 all:$(progs)
 
+testBlock:testBlock.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testMultiAccessCache:testMultiAccessCache.cc
 	g++ $(DEBUG) $(FLAGS) -o $@ $^
 formatSubgraph:formatSubgraph.cc

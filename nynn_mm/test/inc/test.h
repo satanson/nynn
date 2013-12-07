@@ -5,6 +5,6 @@
 #include<nynn_mm_subgraph_cache.h>
 using namespace nynn::mm;
 typedef nynn::mm::BlockType<1<<9> Block;
-typedef nynn::mm::SubgraphStorage<9,12,1<<16,~0L,1<<16,1<<10,64> Subgraph;
+typedef nynn::mm::SubgraphStorageType<9,12,1<<16,~0L,16,1<<10,64> Subgraph;
 typedef nynn::mm::SubgraphCacheType<9,1024*64,1024,64> SubgraphCache;
 #endif

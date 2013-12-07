@@ -35,64 +35,109 @@ struct Edge{
 template <uint32_t BLOCKSZ> 
 union BlockType
 {
-	char     m_data[BLOCKSZ];
-	uint32_t m_indexes[BLOCKSZ/sizeof(uint32_t)];
-
-	struct
+public:
+	struct BlockHeader
 	{
+	private:
+		uint32_t m_source;
 		uint32_t m_prev;
 		uint32_t m_next;	
 		time_t   m_infts;
 		time_t   m_supts;
-		uint32_t m_nedges;
-	}m_header;
+	public:
 
-	static uint32_t getMaxNumberOfEdges() 
+		void setSource(uint32_t vtxno) { m_source=vtxno; }
+		void setPrev(uint32_t blkno) { m_prev=blkno; }
+		void setNext(uint32_t blkno) { m_next=blkno; }
+		void setInfTimestamp(time_t t) { m_infts=t; }
+		void setSupTimestamp(time_t t) { m_supts=t; }
+
+		uint32_t getSource() { return m_source; }
+		uint32_t getPrev() { return  m_prev; }
+		uint32_t getNext() { return  m_next; }
+		time_t getInfTimestamp() { return  m_infts; }
+		time_t getSupTimestamp() { return  m_supts; }
+
+		bool isNewerThan(const BlockHeader *rhs)
+		{ 
+			return this->getInfTimestamp()>=rhs->getSupTimestamp();
+		}
+		bool isNewerThan(time_t timestamp)
+		{
+			return this->getInfTimestamp()>=timestamp;
+		}
+		bool isOlderThan(const BlockHeader *rhs)
+		{
+			return this->getSupTimestamp()<=rhs->getInfTimestamp();
+		}
+		bool isOlderThan(time_t timestamp)
+		{
+			return this->getSupTimestamp()<=timestamp;
+		}
+
+		friend ostream &operator<<(ostream& out,const BlockHeader & h)
+		{
+			out<<"source vertex="<<h.m_source<<endl;
+			out<<"prev block="<<h.m_prev<<endl;
+			out<<"next block="<<h.m_next<<endl;
+			out<<"inf timestamp="<<time2str(h.m_infts)<<endl;
+			out<<"sup timestamp="<<time2str(h.m_supts)<<endl;
+			return out;
+		}
+	}__attribute__((packed));
+	
+	template<typename T> struct  ContentTrait {typedef T BlockContentType; };
+
+	template <typename T>
+	struct TContent:public ContentTrait<TContent<T> >
 	{
-		return (sizeof(BlockType)-sizeof(m_header))/sizeof(Edge); 
+		static uint32_t const BLOCK_CONTENT_SIZE=BLOCKSZ-sizeof(BlockHeader);
+		static uint16_t const CONTENT_CAPACITY=(BLOCK_CONTENT_SIZE-sizeof(uint16_t))/sizeof(T);
+	private:
+		uint16_t m_size;
+		T m_array[CONTENT_CAPACITY];
+	public:
+		uint16_t size()const{ return m_size; };
+		void  resize(uint16_t size){ m_size = size;} 
+
+		T* begin(){ return &m_array[0]; }
+		T* end(){ return &m_array[m_size]; }
+		T* pos(uint16_t i){ return &m_array[i];} 
+	}__attribute__((packed));
+
+	typedef TContent<char> CharContent;
+	typedef TContent<Edge> EdgeContent;
+
+	BlockHeader* getHeader() { return &m_header;}
+	void setHeader(BlockHeader*header) { m_header=*header; } 
+
+	template <typename Content> 
+	operator Content*() 
+	{ 
+		return reinterpret_cast<typename Content::BlockContentType*>(m_data+sizeof(m_header));
 	}
+
+	template <typename Content>
+	BlockType& operator=(Content* content){
+		memcpy(m_data+sizeof(m_header),content,sizeof(Content));
+	}
+
 	static uint32_t getMaxNumberOfIndexes()
 	{
 		return sizeof(m_indexes)/sizeof(m_indexes[0])-1;
 	}
-
+	//index block operations.
+	void initIndexBlock() { m_indexes[0]=0; }
 	bool isAtBottom() { return m_indexes[0]==1; }
 	uint32_t isAtTop() { return m_indexes[0]==getMaxNumberOfIndexes(); }
-	void initIndexBlock() { m_indexes[0]=0; }
-
 	void pushIndex(uint32_t blkno) { m_indexes[++m_indexes[0]]=blkno; }		
-	void setPrev(uint32_t blkno) { m_header.m_prev=blkno; }
-	void setNext(uint32_t blkno) { m_header.m_next=blkno; }
-	void setInfTimestamp(time_t t) { m_header.m_infts=t; }
-	void setSupTimestamp(time_t t) { m_header.m_supts=t; }
-	void setNumberOfEdges(uint32_t n) { m_header.m_nedges=n; }
-
 	uint32_t popIndex() { return  m_indexes[m_indexes[0]--]; }		
-	uint32_t getPrev() { return  m_header.m_prev; }
-	uint32_t getNext() { return  m_header.m_next; }
-	time_t getInfTimestamp() { return  m_header.m_infts; }
-	time_t getSupTimeStamp() { return  m_header.m_supts; }
-	uint32_t getNumberOfEdges() { return  m_header.m_nedges; }
-
-	void setHeader(
-			uint32_t prev,uint32_t next,time_t infts,time_t supts,uint32_t n)
-	{
-		setPrev(prev);
-		setNext(next);
-		setInfTimestamp(infts);
-		setSupTimestamp(supts);
-		setNumberOfEdges(n);
-	}
-
-	Edge* getFirstEdge() 
-	{
-		return reinterpret_cast<Edge*>(m_data+sizeof(m_header));
-	}
-
-	void  setEdge(uint32_t i,Edge *e) { *(getFirstEdge()+i)=*e; } 
-
-	Edge* getEdge(uint32_t i) { return getFirstEdge()+i;}
-};
+private:
+	BlockType& operator=(const BlockType& other);
+	char     m_data[BLOCKSZ];
+	uint32_t m_indexes[BLOCKSZ/sizeof(uint32_t)];
+	BlockHeader m_header;
+}__attribute__((packed));
 
 }}
 #endif
