@@ -30,15 +30,32 @@ public:
 	SubgraphSetType(const string &graphBasedir):m_graphBasedir(graphBasedir)
 	{
 		try{
+			string hostname;
+			uint32_t m_myhost=gethostaddr(hostname);
+			log_i("hostname=%s",hostname.c_str());
+			memset(m_subgraphSites,0,sizeof(my_hosts));
+
+			//initialize Subgraph Storage
 			glob_t g;
 			g.gl_offs=0;
-			string subgraphPathPattern=basedir+"/subgraph0x????????";
+			string subgraphPathPattern=basedir+"/subgraph*";
 			int retcode=glob(subgraphPattern.c_str(),0,0,&g);
 			if (retcode!=0 && retcode!=GLOB_NOMATCH) {
 				string errinfo=string("Fail to invoke glob!")+"("+strerr(errno)+")";
 				throwNynnException(errinfo.c_str());
 			}
-			for (uint32_t  i=0;i<g.gl_pathc;i++) setSubgraph(g.gl_pathv[i]);
+			assert(g.gl_pathc<=SUBGRAPH_ENTRY_NUM);
+			for (uint32_t  i=0;i<g.gl_pathc;i++){
+				const char* path=g.gl_pathv[i];
+				const char* strSubgraphMinVtxno=path+strlen(path)-strlen("0xabcd0000");
+				uint32_t subgraphMinVtxno=strtoul(strSubgraphMinVtxno,NULL,16);
+				assert(subgraphMinVtxno%VERTEX_INTERVAL_WIDTH==0);
+				m_subgraphSites[lambda(subgraphMinVtxno)]=m_myhost;
+				m_subgraphs[lambda(subgraphMinVtxno)].reset(new SubgraphStorageT(path));
+			}
+
+			//initialize Subgraph Cache 
+			m_cache.reset(new SubgraphCacheT());
 		}catch(NynnException &ex){
 			throwNynnException("Fail to create Graph object");
 		}
@@ -50,13 +67,10 @@ public:
 	static uint32_t const IS_BLOCKING=0;
 	
 	
-	void setSubgraph(const string &basedir)
+	void setSubgraph(const string basedir)
 	{
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
-		const char* path=basedir.c_str();
-		const char* strSubgraphMinVtxno=path+strlen(path)-strlen("0xabcd0000");
-		uint32_t subgraphMinVtxno=strtoul(strSubgraphMinVtxno,NULL,16);
-		m_subgraphMap[subgraphMinVtxno].reset(new SubgraphStorageT(basedir));
+
 	}
 	
 	shared_ptr<SubgraphStorageT>& getSubgraph(uint32_t vtxno)
@@ -122,63 +136,32 @@ public:
 		return getSubgraph(vtxno)->getVertex(vtxno)->size();
 	}		
 
-	uint32_t insertPrev(uint32_t vtxno,uint32_t nextBlkno, Block* blk)
+	void insert(uint32_t vtxno,Block* blk)
 	{
 		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
-		Vertex *vtx=subgraph->getVertex(vtxno);
-
-		uint32_t headBlkno=vtx->getHeadBlkno();
-		if (nextBlkno==headBlkno){
-			return unshift(vtxno,blk);
-		}else if (nextBlkno==INVALID_BLOCKNO){
-			return push(vtxno,blk);
-		}else{
-			Content *content=*blk;
-			vtx->resize(vtx->size()+blk->size());
-			uint32_t blkno=subgraph->require();
-			if (blkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
-
-			Block *nextBlk=subgraph->getBlock(nextBlkno);
-			uint32_t prevBlkno=nextBlk->getPrev();
-			nextBlk->getHeader()->setPrev(blkno);
-
-			Block *prevBlk=subgraph->getBlock(prevBlkno);
-			prevBlk->getHeader()->setNext(blkno);
-			
-			blk->getHeader()->setNext(nextBlkno);
-			blk->getHeader()->setPrev(prevBlkno);
-			subgraph->writeBlock(blkno,blk);
-			return blkno;
+		Block::BlockHeader *header=blk->getBlock();
+		Content *content=blk;
+		subgraph->resize(vtxno,subgraph->size(vtxno)+content->size());
+		// Exception::not enough space.	
+		uint32_t blkno=subgraph->require();
+		if (blkno==INVALID_BLOCKNO){
+			throwNynnException("Not enough space on subgraph");
 		}
-	}
 
-	uint32_t insertNext(uint32_t vtxno,uint32_t prevBlkno,Block* blk)
-	{
-		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
-		Vertex *vtx=subgraph->getVertex(vtxno);
+		uint32_t firstBlkno=subgraph->getFirstBlkno(vtxno);
+		// insert first block.
+		if (firstBlkno==INVALID_BLOCKNO){
+			header->setPrev(INVALID_BLOCKNO);
+			header->setNext(INVALID_BLOCKNO);
+			subgraph->setFirstBlkno(blkno);
+		}
 
-		uint32_t tailBlkno=vtx->getTailBlkno();
-		if (prevBlkno==tailBlkno){
-			return push(vtxno,blk);
-		}else if (prevBlkno==INVALID_BLOCKNO){
-			return unshift(vtxno,blk);
-		}else{
-			Content *content=*blk;
-			vtx->resize(vtx->size()+blk->size());
-			uint32_t blkno=subgraph->require();
-			if (blkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
-
-			Block *prevBlk=subgraph->getBlock(prevBlkno);
-			uint32_t nextBlkno=prevBlk->getNext();
-			prevBlk->getHeader()->setNext(blkno);
-
-			Block *nextBlk=subgraph->getBlock(nextBlkno);
-			nextBlk->getHeader()->setPrev(blkno);
-			
-			blk->getHeader()->setNext(nextBlkno);
-			blk->getHeader()->setPrev(prevBlkno);
-			subgraph->writeBlock(blkno,blk);
-			return blkno;
+		// 
+		uint32_t blkno=firstBlkno;
+		Block::BlockHeader *prevHeader=NULL;
+		while(true){
+			currHeader=getBlock(blkno)->getHeader();
+			if(currHeader->isOlderThan(*header))break;
 		}
 	}
 
@@ -189,32 +172,29 @@ public:
 		Vertex *vtx=subgraph->getVertex(vtxno);
 
 		uint32_t headBlkno=vtx->getHeadBlkno();
-		uint32_t tailBlkno=vtx->getTailBlkno();
 
-	    //if Vertex has no blocks.
-		//tailBlkno==INVALID_BLOCKNO also is TRUE
-		if (headBlkno==INVALID_BLOCKNO)return;
-
+		if (headBlkno!=INVALID_BLOCKNO)return;
+		//fatal error!!! Block::BlockHeader *=subgraph->getBlock(blkno)->getHeader();
+		Block *blk=subgraph->getBlock(blkno);
+		Block::BlockHeader header=*blk->getHeader();
+		Content *content=*blk;
+		vtx->resize(vtx->size()-content->size());
 		//remove head block.
-		if (headBlkno==blkno){
-			shift(vtxno);
-		//remove tail block.
-		}else if (TailBlkno==blkno){
-			pop(vtxno);
-		//remove inner block that has prev or next block.
+		if (firstBlkno==blkno) {
+			subgraph->setFirstBlkno(header.getNext());
+			subgraph->release(blkno);
+		//remove other block instead of first one. 
 		}else{
-			Block *blk=subgraph->getBlock(blkno);
-			Content *content=*blk;
-			vtx->resize(vtx->size()-content->size());
+			uint32_t prevBlkno=header.getPrev();
+			uint32_t nextBlkno=header.getNext();
 
-			uint32_t prevBlkno=blk->getHeader()->getPrev();
-			uint32_t nextBlkno=blk->getHeader()->getNext();
-			subgraph->getBlock(prevBlkno)->setNext(nextBlkno);
-			subgraph->getBlock(nextBlkno)->setPrev(prevBlkno);
+			subgraph->getBlock(header.getPrev())->getHeader()->setNext(nextBlkno);
+			subgraph->getBlock(header.getNext())->getHeader()->setPrev(prevBlkno);
+			subgraph->release(blkno);
 		}
 	}
 	
-	uint32_t unshift(uint32_t vtxno,Block*newHeadBlk)
+	void unshift(uint32_t vtxno,Block*newHeadBlk)
 	{
 		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
 		Vertex* vtx=subgraph->getVertex(vtxno);
@@ -222,7 +202,6 @@ public:
 	
 		vtx->resize(vtx->size()+newHeadBlkContent->size());
 		uint32_t newHeadBlkno=subgraph->require();
-		if (newHeadBlkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
 		uint32_t oldHeadBlkno=vtx->getHeadBlkno();
 
 		if (oldHeadBlkno != INVALID_BLOCKNO){
@@ -238,9 +217,7 @@ public:
 			newHeadBlk->getHeader()->setPrev(INVALID_BLOCKNO);
 		}
 		subgraph->writeBlock(newHeadBlkno,newHeadBlk);
-		return newHeadBlkno;
 	}
-
 	void shift(uint32_t vtxno)
 	{
 		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
@@ -266,7 +243,7 @@ public:
 		release(oldHeadBlkno);
 	}
 
-	uint32_t push(uint32_t vtxno,Block*newTailBlk)
+	void push(uint32_t vtxno,Block*newTailBlk)
 	{
 		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
 		Vertex* vtx=subgraph->getVertex(vtxno);
@@ -274,7 +251,6 @@ public:
 	
 		vtx->resize(vtx->size()+newTailBlkContent->size());
 		uint32_t newTailBlkno=subgraph->require();
-		if (newTailBlkno==INVALID_BLOCKNO) return INVALID_BLOCKNO;
 		uint32_t oldTailBlkno=vtx->getTailBlkno();
 
 		if (oldTailBlkno != INVALID_BLOCKNO){
@@ -290,7 +266,6 @@ public:
 			newTailBlk->getHeader()->setNext(INVALID_BLOCKNO);
 		}
 		subgraph->writeBlock(newTailBlkno,newTailBlk);
-		return INVALID_BLOCKNO;
 	}
 
 	void pop(uint32_t vtxno,uint32_t blkno)

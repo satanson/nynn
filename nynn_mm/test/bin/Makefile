@@ -5,10 +5,12 @@ endif
 FLAGS:= -I../inc -I../../inc/ -lrt -lpthread -std=c++0x
 progs:= formatSubgraph testAccessSubgraph testMultiAccessSubgraph \
         testSubgraphCache testSynchronization testMultiAccessCache \
-		testBlock
+		testBlock testAccessSubgraphSet
 
 all:$(progs)
 
+testAccessSubgraphSet:testAccessSubgraphSet.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testBlock:testBlock.cc
 	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testMultiAccessCache:testMultiAccessCache.cc

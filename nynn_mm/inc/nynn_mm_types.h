@@ -13,12 +13,29 @@ static uint32_t const INVALID_BLOCKNO=~0L;
 static uint32_t const INVALID_VERTEXNO=~0L;
 
 struct Vertex{
+private:
 	uint32_t m_source;
 	uint32_t m_data;
-	uint32_t m_nedges;
-	uint32_t m_blkno;
+	uint32_t m_size;
+	uint32_t m_headBlkno;
+	uint32_t m_tailBlkno;
+public:
 	explicit Vertex(uint32_t source):
-		m_source(source),m_data(0),m_nedges(0),m_blkno(INVALID_VERTEXNO){}
+		m_source(source),m_data(0),m_size(0),
+		m_headBlkno(INVALID_VERTEXNO),
+		m_tailBlkno(INVALID_VERTEXNO){}
+
+	uint32_t getSource()const{ return m_source; }
+	uint32_t getData()const{ return m_data; }
+	uint32_t size()const { return m_size; }
+	uint32_t getHeadBlkno()const { return m_headBlkno; }
+	uint32_t getTailBlkno()const { return m_tailBlkno; }
+
+	void setSource(uint32_t source) { m_source=source; }
+	void setData(uint32_t data) { m_data=data; }
+	void resize(uint32_t sz) { m_size=sz; }
+	void setHeadBlkno(uint32_t blkno) { m_headBlkno=blkno; }
+	void setTailBlkno(uint32_t blkno) { m_tailBlkno=blkno; }
 };
 
 struct Edge{
@@ -91,8 +108,8 @@ public:
 	template <typename T>
 	struct TContent:public ContentTrait<TContent<T> >
 	{
-		static uint32_t const BLOCK_CONTENT_SIZE=BLOCKSZ-sizeof(BlockHeader);
-		static uint16_t const CONTENT_CAPACITY=(BLOCK_CONTENT_SIZE-sizeof(uint16_t))/sizeof(T);
+		static uint32_t const BLOCK_CONTENT_SIZE=BLOCKSZ-sizeof(BlockHeader)-sizeof(uint16_t);
+		static uint16_t const CONTENT_CAPACITY=BLOCK_CONTENT_SIZE/sizeof(T);
 	private:
 		uint16_t m_size;
 		T m_array[CONTENT_CAPACITY];

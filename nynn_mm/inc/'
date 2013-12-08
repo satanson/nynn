@@ -88,13 +88,13 @@ struct SuperBlock
 
 	Vertex* getVertex(uint32_t vtxno)
 	{
+		if (!containVertex(vtxno)){
+			throwNynnException("No specified vertex is found in this subgraph!");
+		}
 		return &m_data->m_vertices[vtxno-getMinVtxno()];			
 	}
 
 	void setVertex(uint32_t vtxno,Vertex *vtx)
-	{
-		m_data->m_vertices[vtxno-getMinVtxno]=*vtx;
-	}
 };
 
 struct Overflow{
