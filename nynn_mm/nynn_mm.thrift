@@ -41,4 +41,5 @@ service DataXPeer{
 	list<list<byte> > fetch(1:i64 vtxno,2:i32 blkno);
 	//DataXServer post data to DataXceiver.
 	bool write(1:xvertex_t vtx)
-}
+
+

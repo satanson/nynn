@@ -48,7 +48,7 @@ public:
 	static uint32_t const IS_NONBLOCKING=2;
 	static uint32_t const IS_BLOCKING=0;
 	
-	shared_ptr<SubgraphStorageT>& createSubgraph(const string &basedir)
+	void createSubgraph(const string &basedir)
 	{
 		string cmd="mkdir -p "+basedir;
 		if (system(cmd.c_str())==-1){
@@ -77,14 +77,22 @@ public:
 	{
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
 		uint32_t subgraphKey=VTXNO2SUBGRAPH(makeSubgraphNo(basedir));
-		m_subgraphMap[subgraphKey].reset(NULL);
-		m_subgraphMap.erase(subgraphKey);
+		if (m_subgraphMap.find(subgraphKey)!=m_subgraphMap.end()){
+			m_subgraphMap[subgraphKey].reset(NULL);
+			m_subgraphMap.erase(subgraphKey);
+		}else{
+			throwNynnException("The subgraph that would be detached is not found!");
+		}
 	}
 
 	void attachSubgraph(const string &basedir)
 	{
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
-		m_subgraphMap[VTXNO2SUBGRAPH(makeSubgraphNo(basedir))].reset(new SubgraphStorageT(basedir));
+		try{
+			m_subgraphMap[VTXNO2SUBGRAPH(makeSubgraphNo(basedir))].reset(new SubgraphStorageT(basedir));
+		}catch(NynnException &err){
+			throwNynnException("Fail to attach specified subgraph");
+		}
 	}
 	
 	shared_ptr<SubgraphStorageT>& getSubgraph(uint32_t vtxno)
@@ -94,11 +102,20 @@ public:
 		if (m_subgraphMap.find(subgraphKey)!=m_subgraphMap.end()){
 			return m_subgraphMap[subgraphKey];
 		}else{
-			throwNynnException("");
+			log_w("Cannot find specified subgraph(vtxno=0x%08x,subgraphKey=0x%08x)",vtxno,subgraphKey);
+			throwNynnException("Cannot find specified subgraph");
 		}
 	}
 
-	void getSubgrahpKeys(vector<uint32_t> &keys)
+	void getSubgraphKeys(vector<uint32_t> &keys)
+	{
+		ExclusiveSynchronization es();
+		keys.resize(0);
+		keys.reserve(m_subgraphMap.size());
+		for(SubgraphMapIterator si=m_subgraphMap.begin();si!=m_subgraphMap.end();si++){
+			keys.push_back(si->first);
+		}
+	}
 
 	//bit0: 0(read).1(read&write)
 	//bit1: 0(blocking).1(nonblocking).
@@ -163,10 +180,13 @@ public:
 		}else if (nextBlkno==INVALID_BLOCKNO){
 			return push(vtxno,blk);
 		}else{
-			BlockContent *content=*blk;
-			vtx->resize(vtx->size()+content->size());
 			uint32_t blkno=subgraph->require();
 			if (blkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
+			
+			BlockContent *content=*blk;
+			vtx->resize(vtx->size()+content->size());
+
+			blk->getHeader()->setSource(vtxno);
 
 			Block *nextBlk=subgraph->getBlock(nextBlkno);
 			uint32_t prevBlkno=nextBlk->getHeader()->getPrev();
@@ -193,10 +213,13 @@ public:
 		}else if (prevBlkno==INVALID_BLOCKNO){
 			return unshift(vtxno,blk);
 		}else{
-			BlockContent *content=*blk;
-			vtx->resize(vtx->size()+content->size());
 			uint32_t blkno=subgraph->require();
 			if (blkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
+			
+			BlockContent *content=*blk;
+			vtx->resize(vtx->size()+content->size());
+			
+			blk->getHeader()->setSource(vtxno);
 
 			Block *prevBlk=subgraph->getBlock(prevBlkno);
 			uint32_t nextBlkno=prevBlk->getHeader()->getNext();
@@ -254,8 +277,9 @@ public:
 		vtx->resize(vtx->size()+newHeadBlkContent->size());
 		uint32_t newHeadBlkno=subgraph->require();
 		if (newHeadBlkno==INVALID_BLOCKNO)return INVALID_BLOCKNO;
-		uint32_t oldHeadBlkno=vtx->getHeadBlkno();
 
+		newHeadBlk->getHeader()->setSource(vtxno);
+		uint32_t oldHeadBlkno=vtx->getHeadBlkno();
 		if (oldHeadBlkno != INVALID_BLOCKNO){
 			Block* oldHeadBlk=subgraph->getBlock(oldHeadBlkno);
 			vtx->setHeadBlkno(newHeadBlkno);
@@ -308,8 +332,9 @@ public:
 		vtx->resize(vtx->size()+newTailBlkContent->size());
 		uint32_t newTailBlkno=subgraph->require();
 		if (newTailBlkno==INVALID_BLOCKNO) return INVALID_BLOCKNO;
-		uint32_t oldTailBlkno=vtx->getTailBlkno();
 
+		newTailBlk->getHeader()->setSource(vtxno);
+		uint32_t oldTailBlkno=vtx->getTailBlkno();
 		if (oldTailBlkno != INVALID_BLOCKNO){
 			Block* oldTailBlk=subgraph->getBlock(oldTailBlkno);
 			vtx->setTailBlkno(newTailBlkno);

@@ -6,10 +6,13 @@ FLAGS:= -I../inc -I../../inc/ -lrt -lpthread -std=c++0x
 progs:= formatSubgraph testAccessSubgraph testMultiAccessSubgraph \
         testSubgraphCache testSynchronization testMultiAccessCache \
 		testBlock testPushShift testUnshiftPop testUnshiftShift \
-		testPushPop testInsertPrevRemove testInsertNextRemove
+		testPushPop testInsertPrevRemove testInsertNextRemove \
+		testSubgraphSet
 
 all:$(progs)
 
+testSubgraphSet:testSubgraphSet.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testInsertNextRemove:testInsertNextRemove.cc
 	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testInsertPrevRemove:testInsertPrevRemove.cc
