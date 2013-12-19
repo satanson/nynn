@@ -26,12 +26,12 @@ void* worker(void* arg)
 	for (uint32_t i=0;i<L;i++){
 		uint32_t vtxno=rand_int()%M;
 		uint32_t blkno=rand_int()%N;
-		if (!cache->read(vtxno,blkno,blk)){
+		if (!cache->read(vtxno,blkno,&blk)){
 			for (uint32_t i=0;i<8;i++) {
 				sprintf(reinterpret_cast<char*>(&blk),"%d#%d",vtxno,blkno+i);
 				cout<<"thread#"<<pthread_self()
 					<<" cache:"<<reinterpret_cast<char*>(&blk)<<endl;
-				cache->write(vtxno,blkno+i,blk);
+				cache->write(vtxno,blkno+i,&blk);
 			}
 		}else{
 			incHit();

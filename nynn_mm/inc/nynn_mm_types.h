@@ -53,6 +53,18 @@ template <uint32_t BLOCKSZ>
 union BlockType
 {
 public:
+	struct RawBlock
+	{
+	private:
+		std::vector<int8_t> m_raw;
+	public:
+		RawBlock():m_raw(BLOCKSZ){}
+		std::vector<int8_t>& getRaw(){ return this->m_raw;}	
+		BlockType* getBlock(){ return reinterpret_cast<BlockType*>(this->m_raw.data());}
+		operator std::vector<int8_t>& () { return this->getRaw();}
+		operator BlockType* () { return this->getBlock();}
+	};
+
 	struct BlockHeader
 	{
 	private:

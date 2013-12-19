@@ -21,12 +21,11 @@ template<
 public:
 	//very important const parameter
 	static uint32_t const VERTEX_INTERVAL_WIDTH=SubgraphStorageT::VERTEX_INTERVAL_WIDTH;
-	static uint32_t const SUBGRAPH_ENTRY_NUM=SubgraphStorageT::SUBGRAPH_ENTRY_NUM;
 	
 	typedef map<uint32_t,shared_ptr<SubgraphStorageT> > SubgraphMap;
 	typedef typename SubgraphMap::iterator SubgraphMapIterator;
 
-	SubgraphSetType(const string &graphBasedir):m_subgraphSetBasedir(graphBasedir)
+	SubgraphSetType(const string &subgraphSetBasedir):m_subgraphSetBasedir(subgraphSetBasedir)
 	{
 		try{
 			glob_t g;
@@ -37,7 +36,10 @@ public:
 				string errinfo=string("Fail to invoke glob!")+"("+strerr(errno)+")";
 				throwNynnException(errinfo.c_str());
 			}
-			for (uint32_t  i=0;i<g.gl_pathc;i++) attachSubgraph(g.gl_pathv[i]);
+			for (uint32_t  i=0;i<g.gl_pathc;i++) {
+				uint32_t subgraphKey=makeSubgraphKey(g.gl_pathv[i]);
+				m_subgraphMap[subgraphKey];//insert (subgraphKey,nullptr)
+			}
 		}catch(NynnException &ex){
 			throwNynnException("Fail to create Graph object");
 		}
@@ -48,48 +50,48 @@ public:
 	static uint32_t const IS_NONBLOCKING=2;
 	static uint32_t const IS_BLOCKING=0;
 	
-	void createSubgraph(const string &basedir)
+	void createSubgraph(uint32_t subgraphKey)
 	{
-		string cmd="mkdir -p "+basedir;
+		string subgraphBasedir=makeSubgraphPath(subgraphKey);
+		string cmd="mkdir -p "+subgraphBasedir;
 		if (system(cmd.c_str())==-1){
 			string info="Fail to excecute '"+cmd+"' by invoking 'system'!";
 			throwNynnException(info.c_str());
 		}
 		try{
-			SubgraphStorageT::format(basedir);
-			attachSubgraph(basedir);
+			SubgraphStorageT::format(subgraphBasedir);
 		}catch(NynnException &err){
-			throwNynnException("Fail to format or attach a new Subgraph!");
+			throwNynnException("Fail to format a new Subgraph!");
 		}
 	}
 
-	void destroySubgraph(const string &basedir)
+	void destroySubgraph(uint32_t subgraphKey)
 	{
-		detachSubgraph(basedir);
-		string cmd="rm -fr "+basedir;
+
+		string subgraphBasedir=makeSubgraphPath(subgraphKey);
+		string cmd="rm -fr "+subgraphBasedir;
 		if (system(cmd.c_str())==-1){
 			string info="Fail to excecute '"+cmd+"' by invoking 'system'!";
 			throwNynnException(info.c_str());
 		}
 	}
 
-	void detachSubgraph(const string &basedir)
+	void detachSubgraph(uint32_t subgraphKey)
 	{
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
-		uint32_t subgraphKey=VTXNO2SUBGRAPH(makeSubgraphNo(basedir));
 		if (m_subgraphMap.find(subgraphKey)!=m_subgraphMap.end()){
-			m_subgraphMap[subgraphKey].reset(NULL);
-			m_subgraphMap.erase(subgraphKey);
+			std::swap(shared_ptr<SubgraphStorageT>(),m_subgraphMap[subgraphKey]);
 		}else{
 			throwNynnException("The subgraph that would be detached is not found!");
 		}
 	}
 
-	void attachSubgraph(const string &basedir)
+	void attachSubgraph(uint32_t subgraphKey)
 	{
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
 		try{
-			m_subgraphMap[VTXNO2SUBGRAPH(makeSubgraphNo(basedir))].reset(new SubgraphStorageT(basedir));
+			string subgraphBasedir=makeSubgraphPath(subgraphKey);
+			m_subgraphMap[subgraphKey].reset(new SubgraphStorageT(subgraphBasedir));
 		}catch(NynnException &err){
 			throwNynnException("Fail to attach specified subgraph");
 		}
@@ -100,14 +102,20 @@ public:
 		SharedSynchronization ss(&m_subgraphMapRWLock);
 		uint32_t subgraphKey=VTXNO2SUBGRAPH(vtxno);
 		if (m_subgraphMap.find(subgraphKey)!=m_subgraphMap.end()){
-			return m_subgraphMap[subgraphKey];
-		}else{
+			shared_ptr<SubgraphStorageT>& subgraph=m_subgraphMap[subgraphKey];
+			if (subgraph.get()!=NULL){
+				return subgraph;
+			}else{
+				log_w("subgraph(subgraphKey=0x%08x) has not been attached!",subgraphKey);
+				throwNynnException("Cannot get detached subgraph!");
+			}
+		}else {
 			log_w("Cannot find specified subgraph(vtxno=0x%08x,subgraphKey=0x%08x)",vtxno,subgraphKey);
 			throwNynnException("Cannot find specified subgraph");
 		}
 	}
 
-	void getSubgraphKeys(vector<uint32_t> &keys)
+	void getSubgraphKeys(vector<int32_t> &keys)
 	{
 		ExclusiveSynchronization es();
 		keys.resize(0);
@@ -116,6 +124,8 @@ public:
 			keys.push_back(si->first);
 		}
 	}
+
+	uint32_t getWidthOfVertexInterval(){ return VERTEX_INTERVAL_WIDTH; }
 
 	//bit0: 0(read).1(read&write)
 	//bit1: 0(blocking).1(nonblocking).
@@ -381,25 +391,24 @@ public:
 
 	string makeSubgraphPath(uint32_t vtxno)
 	{
-		uint32_t subgraphNo=VTXNO2SUBGRAPH(vtxno)*VERTEX_INTERVAL_WIDTH;
+		uint32_t subgraphKey=VTXNO2SUBGRAPH(vtxno);
 		stringstream ss;
 		ss<<m_subgraphSetBasedir<<"/subgraph0x";
 		ss<<hex<<nouppercase<<setw(8)<<setfill('0');
-		ss<<subgraphNo;
+		ss<<subgraphKey;
 		return ss.str();
 	}
 
-	uint32_t makeSubgraphNo(string subgraphPath)
+	uint32_t makeSubgraphKey(string subgraphPath)
 	{
 		const char* path=subgraphPath.c_str();
 		const char* strSubgraphNo=path+strlen(path)-strlen("0xabcd0000");
-		uint32_t subgraphNo=strtoul(strSubgraphNo,NULL,16);
-		return subgraphNo;
+		uint32_t subgraphKey=strtoul(strSubgraphNo,NULL,16);
+		return subgraphKey;
 	}
-
-private:
-	static uint32_t VTXNO2SUBGRAPH(uint32_t vtxno) { return vtxno/VERTEX_INTERVAL_WIDTH; }
+	static uint32_t VTXNO2SUBGRAPH(uint32_t vtxno) { return vtxno&~(VERTEX_INTERVAL_WIDTH-1); }
 	static uint32_t VTXNO2RWLOCK(uint32_t vtxno){ return vtxno%VERTEX_RWLOCK_NUM;}
+private:
 	
 	string m_subgraphSetBasedir;
 	RWLock m_vertexRWLocks[VERTEX_RWLOCK_NUM];

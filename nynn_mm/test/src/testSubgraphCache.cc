@@ -15,11 +15,11 @@ int main(int argc,char**argv)
 	for (uint32_t i=0;i<N;i++){
 		uint32_t vtxno=rand_int()%M;
 		uint32_t blkno=rand_int()%K;
-		if(!cache->read(vtxno,blkno,blk)){
+		if(!cache->read(vtxno,blkno,&blk)){
 			for(uint32_t i=0;i<8;i++){
-			 	cache->write(vtxno,blkno+i,blk);
+			 	cache->write(vtxno,blkno+i,&blk);
 			}
-			cache->read(vtxno,blkno,blk);
+			cache->read(vtxno,blkno,&blk);
 		}else{
 			hit++;
 		}

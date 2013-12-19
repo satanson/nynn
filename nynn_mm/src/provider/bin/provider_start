@@ -1,0 +1,4 @@
+#!/bin/bash
+export PROVIDER_PORT=30002
+export SUBGRAPHSET_BASEDIR="/root/subgraphset"
+./provider

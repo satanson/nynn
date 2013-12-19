@@ -45,7 +45,7 @@ public:
 		return rand_r(&vtxno)%CACHE_HEAD_NUM;
 	}
 	
-	bool read(uint32_t vtxno,uint32_t blkno,Block &blk)
+	bool read(uint32_t vtxno,uint32_t blkno,Block *blk)
 	{
 		assert(vtxno!=INVALID_VERTEXNO);
 		assert(blkno!=INVALID_BLOCKNO);
@@ -57,11 +57,11 @@ public:
 		if (curr==INVALID_BLOCKNO)return false;
 
 		move_front(h,curr);
-		memcpy(&blk,m_data+curr,sizeof(Block));
+		memcpy(blk,m_data+curr,sizeof(Block));
 		return true;
 	}
 
-	void write(uint32_t vtxno,uint32_t blkno,Block&blk)
+	void write(uint32_t vtxno,uint32_t blkno,Block *blk)
 	{
 
 		assert(vtxno!=INVALID_VERTEXNO);
@@ -90,7 +90,7 @@ public:
 		}
 		m_entries[curr].m_source=vtxno;
 		m_entries[curr].m_blkno=blkno;
-		memcpy(m_data+curr,&blk,sizeof(Block));
+		memcpy(m_data+curr,blk,sizeof(Block));
 	}
 
 	SubgraphCacheType()
