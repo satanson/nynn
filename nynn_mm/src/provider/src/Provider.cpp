@@ -1796,6 +1796,200 @@ uint32_t Provider_getTailBlkno_presult::read(::apache::thrift::protocol::TProtoc
   return xfer;
 }
 
+uint32_t Provider_readAllBlknos_args::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->vtxno);
+          this->__isset.vtxno = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t Provider_readAllBlknos_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  xfer += oprot->writeStructBegin("Provider_readAllBlknos_args");
+
+  xfer += oprot->writeFieldBegin("vtxno", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32(this->vtxno);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readAllBlknos_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  xfer += oprot->writeStructBegin("Provider_readAllBlknos_pargs");
+
+  xfer += oprot->writeFieldBegin("vtxno", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32((*(this->vtxno)));
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readAllBlknos_result::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->success.clear();
+            uint32_t _size11;
+            ::apache::thrift::protocol::TType _etype14;
+            xfer += iprot->readListBegin(_etype14, _size11);
+            this->success.resize(_size11);
+            uint32_t _i15;
+            for (_i15 = 0; _i15 < _size11; ++_i15)
+            {
+              xfer += iprot->readI32(this->success[_i15]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t Provider_readAllBlknos_result::write(::apache::thrift::protocol::TProtocol* oprot) const {
+
+  uint32_t xfer = 0;
+
+  xfer += oprot->writeStructBegin("Provider_readAllBlknos_result");
+
+  if (this->__isset.success) {
+    xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_LIST, 0);
+    {
+      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->success.size()));
+      std::vector<int32_t> ::const_iterator _iter16;
+      for (_iter16 = this->success.begin(); _iter16 != this->success.end(); ++_iter16)
+      {
+        xfer += oprot->writeI32((*_iter16));
+      }
+      xfer += oprot->writeListEnd();
+    }
+    xfer += oprot->writeFieldEnd();
+  }
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readAllBlknos_presult::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            (*(this->success)).clear();
+            uint32_t _size17;
+            ::apache::thrift::protocol::TType _etype20;
+            xfer += iprot->readListBegin(_etype20, _size17);
+            (*(this->success)).resize(_size17);
+            uint32_t _i21;
+            for (_i21 = 0; _i21 < _size17; ++_i21)
+            {
+              xfer += iprot->readI32((*(this->success))[_i21]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
 uint32_t Provider_read_args::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -1902,14 +2096,14 @@ uint32_t Provider_read_result::read(::apache::thrift::protocol::TProtocol* iprot
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->success.clear();
-            uint32_t _size11;
-            ::apache::thrift::protocol::TType _etype14;
-            xfer += iprot->readListBegin(_etype14, _size11);
-            this->success.resize(_size11);
-            uint32_t _i15;
-            for (_i15 = 0; _i15 < _size11; ++_i15)
+            uint32_t _size22;
+            ::apache::thrift::protocol::TType _etype25;
+            xfer += iprot->readListBegin(_etype25, _size22);
+            this->success.resize(_size22);
+            uint32_t _i26;
+            for (_i26 = 0; _i26 < _size22; ++_i26)
             {
-              xfer += iprot->readByte(this->success[_i15]);
+              xfer += iprot->readByte(this->success[_i26]);
             }
             xfer += iprot->readListEnd();
           }
@@ -1940,10 +2134,10 @@ uint32_t Provider_read_result::write(::apache::thrift::protocol::TProtocol* opro
     xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_LIST, 0);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->success.size()));
-      std::vector<int8_t> ::const_iterator _iter16;
-      for (_iter16 = this->success.begin(); _iter16 != this->success.end(); ++_iter16)
+      std::vector<int8_t> ::const_iterator _iter27;
+      for (_iter27 = this->success.begin(); _iter27 != this->success.end(); ++_iter27)
       {
-        xfer += oprot->writeByte((*_iter16));
+        xfer += oprot->writeByte((*_iter27));
       }
       xfer += oprot->writeListEnd();
     }
@@ -1978,14 +2172,240 @@ uint32_t Provider_read_presult::read(::apache::thrift::protocol::TProtocol* ipro
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             (*(this->success)).clear();
-            uint32_t _size17;
-            ::apache::thrift::protocol::TType _etype20;
-            xfer += iprot->readListBegin(_etype20, _size17);
-            (*(this->success)).resize(_size17);
-            uint32_t _i21;
-            for (_i21 = 0; _i21 < _size17; ++_i21)
+            uint32_t _size28;
+            ::apache::thrift::protocol::TType _etype31;
+            xfer += iprot->readListBegin(_etype31, _size28);
+            (*(this->success)).resize(_size28);
+            uint32_t _i32;
+            for (_i32 = 0; _i32 < _size28; ++_i32)
             {
-              xfer += iprot->readByte((*(this->success))[_i21]);
+              xfer += iprot->readByte((*(this->success))[_i32]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t Provider_readn_args::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->vtxno);
+          this->__isset.vtxno = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 2:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->blkno);
+          this->__isset.blkno = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 3:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->n);
+          this->__isset.n = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t Provider_readn_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  xfer += oprot->writeStructBegin("Provider_readn_args");
+
+  xfer += oprot->writeFieldBegin("vtxno", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32(this->vtxno);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("blkno", ::apache::thrift::protocol::T_I32, 2);
+  xfer += oprot->writeI32(this->blkno);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("n", ::apache::thrift::protocol::T_I32, 3);
+  xfer += oprot->writeI32(this->n);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readn_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  xfer += oprot->writeStructBegin("Provider_readn_pargs");
+
+  xfer += oprot->writeFieldBegin("vtxno", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32((*(this->vtxno)));
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("blkno", ::apache::thrift::protocol::T_I32, 2);
+  xfer += oprot->writeI32((*(this->blkno)));
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("n", ::apache::thrift::protocol::T_I32, 3);
+  xfer += oprot->writeI32((*(this->n)));
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readn_result::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->success.clear();
+            uint32_t _size33;
+            ::apache::thrift::protocol::TType _etype36;
+            xfer += iprot->readListBegin(_etype36, _size33);
+            this->success.resize(_size33);
+            uint32_t _i37;
+            for (_i37 = 0; _i37 < _size33; ++_i37)
+            {
+              xfer += iprot->readByte(this->success[_i37]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t Provider_readn_result::write(::apache::thrift::protocol::TProtocol* oprot) const {
+
+  uint32_t xfer = 0;
+
+  xfer += oprot->writeStructBegin("Provider_readn_result");
+
+  if (this->__isset.success) {
+    xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_LIST, 0);
+    {
+      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->success.size()));
+      std::vector<int8_t> ::const_iterator _iter38;
+      for (_iter38 = this->success.begin(); _iter38 != this->success.end(); ++_iter38)
+      {
+        xfer += oprot->writeByte((*_iter38));
+      }
+      xfer += oprot->writeListEnd();
+    }
+    xfer += oprot->writeFieldEnd();
+  }
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+uint32_t Provider_readn_presult::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            (*(this->success)).clear();
+            uint32_t _size39;
+            ::apache::thrift::protocol::TType _etype42;
+            xfer += iprot->readListBegin(_etype42, _size39);
+            (*(this->success)).resize(_size39);
+            uint32_t _i43;
+            for (_i43 = 0; _i43 < _size39; ++_i43)
+            {
+              xfer += iprot->readByte((*(this->success))[_i43]);
             }
             xfer += iprot->readListEnd();
           }
@@ -2045,19 +2465,19 @@ uint32_t Provider_insertPrev_args::read(::apache::thrift::protocol::TProtocol* i
       case 3:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
-            this->rawblk.clear();
-            uint32_t _size22;
-            ::apache::thrift::protocol::TType _etype25;
-            xfer += iprot->readListBegin(_etype25, _size22);
-            this->rawblk.resize(_size22);
-            uint32_t _i26;
-            for (_i26 = 0; _i26 < _size22; ++_i26)
+            this->xblk.clear();
+            uint32_t _size44;
+            ::apache::thrift::protocol::TType _etype47;
+            xfer += iprot->readListBegin(_etype47, _size44);
+            this->xblk.resize(_size44);
+            uint32_t _i48;
+            for (_i48 = 0; _i48 < _size44; ++_i48)
             {
-              xfer += iprot->readByte(this->rawblk[_i26]);
+              xfer += iprot->readByte(this->xblk[_i48]);
             }
             xfer += iprot->readListEnd();
           }
-          this->__isset.rawblk = true;
+          this->__isset.xblk = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -2086,13 +2506,13 @@ uint32_t Provider_insertPrev_args::write(::apache::thrift::protocol::TProtocol* 
   xfer += oprot->writeI32(this->nextBlkno);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("rawblk", ::apache::thrift::protocol::T_LIST, 3);
+  xfer += oprot->writeFieldBegin("xblk", ::apache::thrift::protocol::T_LIST, 3);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->rawblk.size()));
-    std::vector<int8_t> ::const_iterator _iter27;
-    for (_iter27 = this->rawblk.begin(); _iter27 != this->rawblk.end(); ++_iter27)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->xblk.size()));
+    std::vector<int8_t> ::const_iterator _iter49;
+    for (_iter49 = this->xblk.begin(); _iter49 != this->xblk.end(); ++_iter49)
     {
-      xfer += oprot->writeByte((*_iter27));
+      xfer += oprot->writeByte((*_iter49));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2115,13 +2535,13 @@ uint32_t Provider_insertPrev_pargs::write(::apache::thrift::protocol::TProtocol*
   xfer += oprot->writeI32((*(this->nextBlkno)));
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("rawblk", ::apache::thrift::protocol::T_LIST, 3);
+  xfer += oprot->writeFieldBegin("xblk", ::apache::thrift::protocol::T_LIST, 3);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->rawblk)).size()));
-    std::vector<int8_t> ::const_iterator _iter28;
-    for (_iter28 = (*(this->rawblk)).begin(); _iter28 != (*(this->rawblk)).end(); ++_iter28)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->xblk)).size()));
+    std::vector<int8_t> ::const_iterator _iter50;
+    for (_iter50 = (*(this->xblk)).begin(); _iter50 != (*(this->xblk)).end(); ++_iter50)
     {
-      xfer += oprot->writeByte((*_iter28));
+      xfer += oprot->writeByte((*_iter50));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2267,19 +2687,19 @@ uint32_t Provider_insertNext_args::read(::apache::thrift::protocol::TProtocol* i
       case 3:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
-            this->rawblk.clear();
-            uint32_t _size29;
-            ::apache::thrift::protocol::TType _etype32;
-            xfer += iprot->readListBegin(_etype32, _size29);
-            this->rawblk.resize(_size29);
-            uint32_t _i33;
-            for (_i33 = 0; _i33 < _size29; ++_i33)
+            this->xblk.clear();
+            uint32_t _size51;
+            ::apache::thrift::protocol::TType _etype54;
+            xfer += iprot->readListBegin(_etype54, _size51);
+            this->xblk.resize(_size51);
+            uint32_t _i55;
+            for (_i55 = 0; _i55 < _size51; ++_i55)
             {
-              xfer += iprot->readByte(this->rawblk[_i33]);
+              xfer += iprot->readByte(this->xblk[_i55]);
             }
             xfer += iprot->readListEnd();
           }
-          this->__isset.rawblk = true;
+          this->__isset.xblk = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -2308,13 +2728,13 @@ uint32_t Provider_insertNext_args::write(::apache::thrift::protocol::TProtocol* 
   xfer += oprot->writeI32(this->prevBlkno);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("rawblk", ::apache::thrift::protocol::T_LIST, 3);
+  xfer += oprot->writeFieldBegin("xblk", ::apache::thrift::protocol::T_LIST, 3);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->rawblk.size()));
-    std::vector<int8_t> ::const_iterator _iter34;
-    for (_iter34 = this->rawblk.begin(); _iter34 != this->rawblk.end(); ++_iter34)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->xblk.size()));
+    std::vector<int8_t> ::const_iterator _iter56;
+    for (_iter56 = this->xblk.begin(); _iter56 != this->xblk.end(); ++_iter56)
     {
-      xfer += oprot->writeByte((*_iter34));
+      xfer += oprot->writeByte((*_iter56));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2337,13 +2757,13 @@ uint32_t Provider_insertNext_pargs::write(::apache::thrift::protocol::TProtocol*
   xfer += oprot->writeI32((*(this->prevBlkno)));
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("rawblk", ::apache::thrift::protocol::T_LIST, 3);
+  xfer += oprot->writeFieldBegin("xblk", ::apache::thrift::protocol::T_LIST, 3);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->rawblk)).size()));
-    std::vector<int8_t> ::const_iterator _iter35;
-    for (_iter35 = (*(this->rawblk)).begin(); _iter35 != (*(this->rawblk)).end(); ++_iter35)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->xblk)).size()));
+    std::vector<int8_t> ::const_iterator _iter57;
+    for (_iter57 = (*(this->xblk)).begin(); _iter57 != (*(this->xblk)).end(); ++_iter57)
     {
-      xfer += oprot->writeByte((*_iter35));
+      xfer += oprot->writeByte((*_iter57));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2659,19 +3079,19 @@ uint32_t Provider_unshift_args::read(::apache::thrift::protocol::TProtocol* ipro
       case 2:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
-            this->newRawHeadBlk.clear();
-            uint32_t _size36;
-            ::apache::thrift::protocol::TType _etype39;
-            xfer += iprot->readListBegin(_etype39, _size36);
-            this->newRawHeadBlk.resize(_size36);
-            uint32_t _i40;
-            for (_i40 = 0; _i40 < _size36; ++_i40)
+            this->newXHeadBlk.clear();
+            uint32_t _size58;
+            ::apache::thrift::protocol::TType _etype61;
+            xfer += iprot->readListBegin(_etype61, _size58);
+            this->newXHeadBlk.resize(_size58);
+            uint32_t _i62;
+            for (_i62 = 0; _i62 < _size58; ++_i62)
             {
-              xfer += iprot->readByte(this->newRawHeadBlk[_i40]);
+              xfer += iprot->readByte(this->newXHeadBlk[_i62]);
             }
             xfer += iprot->readListEnd();
           }
-          this->__isset.newRawHeadBlk = true;
+          this->__isset.newXHeadBlk = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -2696,13 +3116,13 @@ uint32_t Provider_unshift_args::write(::apache::thrift::protocol::TProtocol* opr
   xfer += oprot->writeI32(this->vtxno);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("newRawHeadBlk", ::apache::thrift::protocol::T_LIST, 2);
+  xfer += oprot->writeFieldBegin("newXHeadBlk", ::apache::thrift::protocol::T_LIST, 2);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->newRawHeadBlk.size()));
-    std::vector<int8_t> ::const_iterator _iter41;
-    for (_iter41 = this->newRawHeadBlk.begin(); _iter41 != this->newRawHeadBlk.end(); ++_iter41)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->newXHeadBlk.size()));
+    std::vector<int8_t> ::const_iterator _iter63;
+    for (_iter63 = this->newXHeadBlk.begin(); _iter63 != this->newXHeadBlk.end(); ++_iter63)
     {
-      xfer += oprot->writeByte((*_iter41));
+      xfer += oprot->writeByte((*_iter63));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2721,13 +3141,13 @@ uint32_t Provider_unshift_pargs::write(::apache::thrift::protocol::TProtocol* op
   xfer += oprot->writeI32((*(this->vtxno)));
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("newRawHeadBlk", ::apache::thrift::protocol::T_LIST, 2);
+  xfer += oprot->writeFieldBegin("newXHeadBlk", ::apache::thrift::protocol::T_LIST, 2);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->newRawHeadBlk)).size()));
-    std::vector<int8_t> ::const_iterator _iter42;
-    for (_iter42 = (*(this->newRawHeadBlk)).begin(); _iter42 != (*(this->newRawHeadBlk)).end(); ++_iter42)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->newXHeadBlk)).size()));
+    std::vector<int8_t> ::const_iterator _iter64;
+    for (_iter64 = (*(this->newXHeadBlk)).begin(); _iter64 != (*(this->newXHeadBlk)).end(); ++_iter64)
     {
-      xfer += oprot->writeByte((*_iter42));
+      xfer += oprot->writeByte((*_iter64));
     }
     xfer += oprot->writeListEnd();
   }
@@ -3027,19 +3447,19 @@ uint32_t Provider_push_args::read(::apache::thrift::protocol::TProtocol* iprot) 
       case 2:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
-            this->newRawTailBlk.clear();
-            uint32_t _size43;
-            ::apache::thrift::protocol::TType _etype46;
-            xfer += iprot->readListBegin(_etype46, _size43);
-            this->newRawTailBlk.resize(_size43);
-            uint32_t _i47;
-            for (_i47 = 0; _i47 < _size43; ++_i47)
+            this->newXTailBlk.clear();
+            uint32_t _size65;
+            ::apache::thrift::protocol::TType _etype68;
+            xfer += iprot->readListBegin(_etype68, _size65);
+            this->newXTailBlk.resize(_size65);
+            uint32_t _i69;
+            for (_i69 = 0; _i69 < _size65; ++_i69)
             {
-              xfer += iprot->readByte(this->newRawTailBlk[_i47]);
+              xfer += iprot->readByte(this->newXTailBlk[_i69]);
             }
             xfer += iprot->readListEnd();
           }
-          this->__isset.newRawTailBlk = true;
+          this->__isset.newXTailBlk = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -3064,13 +3484,13 @@ uint32_t Provider_push_args::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeI32(this->vtxno);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("newRawTailBlk", ::apache::thrift::protocol::T_LIST, 2);
+  xfer += oprot->writeFieldBegin("newXTailBlk", ::apache::thrift::protocol::T_LIST, 2);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->newRawTailBlk.size()));
-    std::vector<int8_t> ::const_iterator _iter48;
-    for (_iter48 = this->newRawTailBlk.begin(); _iter48 != this->newRawTailBlk.end(); ++_iter48)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>(this->newXTailBlk.size()));
+    std::vector<int8_t> ::const_iterator _iter70;
+    for (_iter70 = this->newXTailBlk.begin(); _iter70 != this->newXTailBlk.end(); ++_iter70)
     {
-      xfer += oprot->writeByte((*_iter48));
+      xfer += oprot->writeByte((*_iter70));
     }
     xfer += oprot->writeListEnd();
   }
@@ -3089,13 +3509,13 @@ uint32_t Provider_push_pargs::write(::apache::thrift::protocol::TProtocol* oprot
   xfer += oprot->writeI32((*(this->vtxno)));
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("newRawTailBlk", ::apache::thrift::protocol::T_LIST, 2);
+  xfer += oprot->writeFieldBegin("newXTailBlk", ::apache::thrift::protocol::T_LIST, 2);
   {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->newRawTailBlk)).size()));
-    std::vector<int8_t> ::const_iterator _iter49;
-    for (_iter49 = (*(this->newRawTailBlk)).begin(); _iter49 != (*(this->newRawTailBlk)).end(); ++_iter49)
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_BYTE, static_cast<uint32_t>((*(this->newXTailBlk)).size()));
+    std::vector<int8_t> ::const_iterator _iter71;
+    for (_iter71 = (*(this->newXTailBlk)).begin(); _iter71 != (*(this->newXTailBlk)).end(); ++_iter71)
     {
-      xfer += oprot->writeByte((*_iter49));
+      xfer += oprot->writeByte((*_iter71));
     }
     xfer += oprot->writeListEnd();
   }
@@ -4001,6 +4421,64 @@ int32_t ProviderClient::recv_getTailBlkno()
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "getTailBlkno failed: unknown result");
 }
 
+void ProviderClient::readAllBlknos(std::vector<int32_t> & _return, const int32_t vtxno)
+{
+  send_readAllBlknos(vtxno);
+  recv_readAllBlknos(_return);
+}
+
+void ProviderClient::send_readAllBlknos(const int32_t vtxno)
+{
+  int32_t cseqid = 0;
+  oprot_->writeMessageBegin("readAllBlknos", ::apache::thrift::protocol::T_CALL, cseqid);
+
+  Provider_readAllBlknos_pargs args;
+  args.vtxno = &vtxno;
+  args.write(oprot_);
+
+  oprot_->writeMessageEnd();
+  oprot_->getTransport()->writeEnd();
+  oprot_->getTransport()->flush();
+}
+
+void ProviderClient::recv_readAllBlknos(std::vector<int32_t> & _return)
+{
+
+  int32_t rseqid = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TMessageType mtype;
+
+  iprot_->readMessageBegin(fname, mtype, rseqid);
+  if (mtype == ::apache::thrift::protocol::T_EXCEPTION) {
+    ::apache::thrift::TApplicationException x;
+    x.read(iprot_);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+    throw x;
+  }
+  if (mtype != ::apache::thrift::protocol::T_REPLY) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  if (fname.compare("readAllBlknos") != 0) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  Provider_readAllBlknos_presult result;
+  result.success = &_return;
+  result.read(iprot_);
+  iprot_->readMessageEnd();
+  iprot_->getTransport()->readEnd();
+
+  if (result.__isset.success) {
+    // _return pointer has now been filled
+    return;
+  }
+  throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "readAllBlknos failed: unknown result");
+}
+
 void ProviderClient::read(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno)
 {
   send_read(vtxno, blkno);
@@ -4060,13 +4538,73 @@ void ProviderClient::recv_read(std::vector<int8_t> & _return)
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "read failed: unknown result");
 }
 
-int32_t ProviderClient::insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk)
+void ProviderClient::readn(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno, const int32_t n)
 {
-  send_insertPrev(vtxno, nextBlkno, rawblk);
+  send_readn(vtxno, blkno, n);
+  recv_readn(_return);
+}
+
+void ProviderClient::send_readn(const int32_t vtxno, const int32_t blkno, const int32_t n)
+{
+  int32_t cseqid = 0;
+  oprot_->writeMessageBegin("readn", ::apache::thrift::protocol::T_CALL, cseqid);
+
+  Provider_readn_pargs args;
+  args.vtxno = &vtxno;
+  args.blkno = &blkno;
+  args.n = &n;
+  args.write(oprot_);
+
+  oprot_->writeMessageEnd();
+  oprot_->getTransport()->writeEnd();
+  oprot_->getTransport()->flush();
+}
+
+void ProviderClient::recv_readn(std::vector<int8_t> & _return)
+{
+
+  int32_t rseqid = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TMessageType mtype;
+
+  iprot_->readMessageBegin(fname, mtype, rseqid);
+  if (mtype == ::apache::thrift::protocol::T_EXCEPTION) {
+    ::apache::thrift::TApplicationException x;
+    x.read(iprot_);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+    throw x;
+  }
+  if (mtype != ::apache::thrift::protocol::T_REPLY) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  if (fname.compare("readn") != 0) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  Provider_readn_presult result;
+  result.success = &_return;
+  result.read(iprot_);
+  iprot_->readMessageEnd();
+  iprot_->getTransport()->readEnd();
+
+  if (result.__isset.success) {
+    // _return pointer has now been filled
+    return;
+  }
+  throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "readn failed: unknown result");
+}
+
+int32_t ProviderClient::insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk)
+{
+  send_insertPrev(vtxno, nextBlkno, xblk);
   return recv_insertPrev();
 }
 
-void ProviderClient::send_insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk)
+void ProviderClient::send_insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk)
 {
   int32_t cseqid = 0;
   oprot_->writeMessageBegin("insertPrev", ::apache::thrift::protocol::T_CALL, cseqid);
@@ -4074,7 +4612,7 @@ void ProviderClient::send_insertPrev(const int32_t vtxno, const int32_t nextBlkn
   Provider_insertPrev_pargs args;
   args.vtxno = &vtxno;
   args.nextBlkno = &nextBlkno;
-  args.rawblk = &rawblk;
+  args.xblk = &xblk;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -4120,13 +4658,13 @@ int32_t ProviderClient::recv_insertPrev()
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "insertPrev failed: unknown result");
 }
 
-int32_t ProviderClient::insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk)
+int32_t ProviderClient::insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk)
 {
-  send_insertNext(vtxno, prevBlkno, rawblk);
+  send_insertNext(vtxno, prevBlkno, xblk);
   return recv_insertNext();
 }
 
-void ProviderClient::send_insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk)
+void ProviderClient::send_insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk)
 {
   int32_t cseqid = 0;
   oprot_->writeMessageBegin("insertNext", ::apache::thrift::protocol::T_CALL, cseqid);
@@ -4134,7 +4672,7 @@ void ProviderClient::send_insertNext(const int32_t vtxno, const int32_t prevBlkn
   Provider_insertNext_pargs args;
   args.vtxno = &vtxno;
   args.prevBlkno = &prevBlkno;
-  args.rawblk = &rawblk;
+  args.xblk = &xblk;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -4239,20 +4777,20 @@ bool ProviderClient::recv_remove()
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "remove failed: unknown result");
 }
 
-int32_t ProviderClient::unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk)
+int32_t ProviderClient::unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk)
 {
-  send_unshift(vtxno, newRawHeadBlk);
+  send_unshift(vtxno, newXHeadBlk);
   return recv_unshift();
 }
 
-void ProviderClient::send_unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk)
+void ProviderClient::send_unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk)
 {
   int32_t cseqid = 0;
   oprot_->writeMessageBegin("unshift", ::apache::thrift::protocol::T_CALL, cseqid);
 
   Provider_unshift_pargs args;
   args.vtxno = &vtxno;
-  args.newRawHeadBlk = &newRawHeadBlk;
+  args.newXHeadBlk = &newXHeadBlk;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -4356,20 +4894,20 @@ bool ProviderClient::recv_shift()
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "shift failed: unknown result");
 }
 
-int32_t ProviderClient::push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk)
+int32_t ProviderClient::push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk)
 {
-  send_push(vtxno, newRawTailBlk);
+  send_push(vtxno, newXTailBlk);
   return recv_push();
 }
 
-void ProviderClient::send_push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk)
+void ProviderClient::send_push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk)
 {
   int32_t cseqid = 0;
   oprot_->writeMessageBegin("push", ::apache::thrift::protocol::T_CALL, cseqid);
 
   Provider_push_pargs args;
   args.vtxno = &vtxno;
-  args.newRawTailBlk = &newRawTailBlk;
+  args.newXTailBlk = &newXTailBlk;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -5086,6 +5624,60 @@ void ProviderProcessor::process_getTailBlkno(int32_t seqid, ::apache::thrift::pr
   }
 }
 
+void ProviderProcessor::process_readAllBlknos(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
+{
+  void* ctx = NULL;
+  if (this->eventHandler_.get() != NULL) {
+    ctx = this->eventHandler_->getContext("Provider.readAllBlknos", callContext);
+  }
+  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "Provider.readAllBlknos");
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preRead(ctx, "Provider.readAllBlknos");
+  }
+
+  Provider_readAllBlknos_args args;
+  args.read(iprot);
+  iprot->readMessageEnd();
+  uint32_t bytes = iprot->getTransport()->readEnd();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postRead(ctx, "Provider.readAllBlknos", bytes);
+  }
+
+  Provider_readAllBlknos_result result;
+  try {
+    iface_->readAllBlknos(result.success, args.vtxno);
+    result.__isset.success = true;
+  } catch (const std::exception& e) {
+    if (this->eventHandler_.get() != NULL) {
+      this->eventHandler_->handlerError(ctx, "Provider.readAllBlknos");
+    }
+
+    ::apache::thrift::TApplicationException x(e.what());
+    oprot->writeMessageBegin("readAllBlknos", ::apache::thrift::protocol::T_EXCEPTION, seqid);
+    x.write(oprot);
+    oprot->writeMessageEnd();
+    oprot->getTransport()->writeEnd();
+    oprot->getTransport()->flush();
+    return;
+  }
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preWrite(ctx, "Provider.readAllBlknos");
+  }
+
+  oprot->writeMessageBegin("readAllBlknos", ::apache::thrift::protocol::T_REPLY, seqid);
+  result.write(oprot);
+  oprot->writeMessageEnd();
+  bytes = oprot->getTransport()->writeEnd();
+  oprot->getTransport()->flush();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postWrite(ctx, "Provider.readAllBlknos", bytes);
+  }
+}
+
 void ProviderProcessor::process_read(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
 {
   void* ctx = NULL;
@@ -5140,6 +5732,60 @@ void ProviderProcessor::process_read(int32_t seqid, ::apache::thrift::protocol::
   }
 }
 
+void ProviderProcessor::process_readn(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
+{
+  void* ctx = NULL;
+  if (this->eventHandler_.get() != NULL) {
+    ctx = this->eventHandler_->getContext("Provider.readn", callContext);
+  }
+  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "Provider.readn");
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preRead(ctx, "Provider.readn");
+  }
+
+  Provider_readn_args args;
+  args.read(iprot);
+  iprot->readMessageEnd();
+  uint32_t bytes = iprot->getTransport()->readEnd();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postRead(ctx, "Provider.readn", bytes);
+  }
+
+  Provider_readn_result result;
+  try {
+    iface_->readn(result.success, args.vtxno, args.blkno, args.n);
+    result.__isset.success = true;
+  } catch (const std::exception& e) {
+    if (this->eventHandler_.get() != NULL) {
+      this->eventHandler_->handlerError(ctx, "Provider.readn");
+    }
+
+    ::apache::thrift::TApplicationException x(e.what());
+    oprot->writeMessageBegin("readn", ::apache::thrift::protocol::T_EXCEPTION, seqid);
+    x.write(oprot);
+    oprot->writeMessageEnd();
+    oprot->getTransport()->writeEnd();
+    oprot->getTransport()->flush();
+    return;
+  }
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preWrite(ctx, "Provider.readn");
+  }
+
+  oprot->writeMessageBegin("readn", ::apache::thrift::protocol::T_REPLY, seqid);
+  result.write(oprot);
+  oprot->writeMessageEnd();
+  bytes = oprot->getTransport()->writeEnd();
+  oprot->getTransport()->flush();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postWrite(ctx, "Provider.readn", bytes);
+  }
+}
+
 void ProviderProcessor::process_insertPrev(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
 {
   void* ctx = NULL;
@@ -5163,7 +5809,7 @@ void ProviderProcessor::process_insertPrev(int32_t seqid, ::apache::thrift::prot
 
   Provider_insertPrev_result result;
   try {
-    result.success = iface_->insertPrev(args.vtxno, args.nextBlkno, args.rawblk);
+    result.success = iface_->insertPrev(args.vtxno, args.nextBlkno, args.xblk);
     result.__isset.success = true;
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {
@@ -5217,7 +5863,7 @@ void ProviderProcessor::process_insertNext(int32_t seqid, ::apache::thrift::prot
 
   Provider_insertNext_result result;
   try {
-    result.success = iface_->insertNext(args.vtxno, args.prevBlkno, args.rawblk);
+    result.success = iface_->insertNext(args.vtxno, args.prevBlkno, args.xblk);
     result.__isset.success = true;
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {
@@ -5325,7 +5971,7 @@ void ProviderProcessor::process_unshift(int32_t seqid, ::apache::thrift::protoco
 
   Provider_unshift_result result;
   try {
-    result.success = iface_->unshift(args.vtxno, args.newRawHeadBlk);
+    result.success = iface_->unshift(args.vtxno, args.newXHeadBlk);
     result.__isset.success = true;
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {
@@ -5433,7 +6079,7 @@ void ProviderProcessor::process_push(int32_t seqid, ::apache::thrift::protocol::
 
   Provider_push_result result;
   try {
-    result.success = iface_->push(args.vtxno, args.newRawTailBlk);
+    result.success = iface_->push(args.vtxno, args.newXTailBlk);
     result.__isset.success = true;
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {

@@ -46,6 +46,7 @@ public:
 	static uint32_t const SUBGRAPH_ENTRY_NUM=1<<(32-LOG2_VERTEX_INTERVAL_WIDTH);
 
 	typedef nynn::mm::BlockType<BLOCKSZ> Block;
+	typedef typename Block::BlockHeader BlockHeader;
 
 	struct SuperBlock
 	{ 
@@ -225,13 +226,30 @@ public:
 	}
 	
 
-	void readBlock(uint32_t blkno,Block*blk)
+	Block* readBlock(uint32_t blkno,Block*blk)
 	{
-		nynn::mm::common::SharedSynchronization ss(&m_superblkRWLock);
-		nynn::mm::common::Synchronization s(&m_monitors[blkno%MONITOR_NUM]);
+		SharedSynchronization ss(&m_superblkRWLock);
+		unique_ptr<Synchronization> s;
+		if (isOverflow(blkno))s.reset(new Synchronization(&m_monitors[blkno%MONITOR_NUM]));
+
 		Block *srcBlk=getBlock(blkno);
 		if (srcBlk==NULL)throwNynnException("Fail to get specified block(getBlock)!");
+
 		memcpy(blk,srcBlk,sizeof(Block));
+		return blk;
+	}
+
+	BlockHeader* readBlockHeader(uint32_t blkno, BlockHeader *header)
+	{
+		SharedSynchronization ss(&m_superblkRWLock);
+		unique_ptr<Synchronization> s;
+		if (isOverflow(blkno))s.reset(new Synchronization(&m_monitors[blkno%MONITOR_NUM]));
+
+		Block *blk=getBlock(blkno);
+		if (blk==NULL)throwNynnException("Fail to get specified block(getBlock)!");
+
+		memcpy(header,blk->getHeader(),sizeof(BlockHeader));
+		return header;
 	}
 	
 	void writeBlock(uint32_t blkno,Block*blk)
@@ -239,8 +257,6 @@ public:
 		nynn::mm::common::SharedSynchronization ss(&m_superblkRWLock);
 		nynn::mm::common::Synchronization s(&m_monitors[blkno%MONITOR_NUM]);
 		Block *destBlk=getBlock(blkno);
-//		log_i("blkno=%d;Block=%p",blkno,destBlk);/g
-//		log_i("superblk.data=%p",m_superblk.m_data);/g
 		if (destBlk==NULL)throwNynnException("Fail to get specified block(getBlock)!");
 		memcpy(destBlk,blk,sizeof(Block));
 	}

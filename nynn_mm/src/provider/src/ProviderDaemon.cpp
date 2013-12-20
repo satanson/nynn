@@ -100,19 +100,27 @@ class ProviderHandler : virtual public ProviderIf {
 	  return subgraphSet->getTailBlkno(vtxno);
   }
 
-  void read(std::vector<int8_t> & rawBlk, const int32_t vtxno, const int32_t blkno) {
-	  rawBlk.resize(sizeof(Block));
-	  Block* blk=reinterpret_cast<Block*>(const_cast<int8_t*>(rawBlk.data()));
+  void readAllBlknos(std::vector<int32_t> & blknos,const int32_t vtxno) {
+	  subgraphSet->readAllBlknos(vtxno,blknos); 
+  }
+
+  void read(std::vector<int8_t> & xblk, const int32_t vtxno, const int32_t blkno) {
+	  xblk.resize(sizeof(Block));
+	  Block* blk=reinterpret_cast<Block*>(const_cast<int8_t*>(xblk.data()));
 	  subgraphSet->read(vtxno,blkno,blk);
   }
 
-  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawBlk) {
-	  Block *blk=reinterpret_cast<Block*>(const_cast<int8_t*>(rawBlk.data()));
+  void readn(std::vector<int8_t> & xblks, const int32_t vtxno, const int32_t blkno, const int32_t n) {
+	  subgraphSet->readn(vtxno,blkno,n,xblks);
+  }
+
+  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk) {
+	  Block *blk=reinterpret_cast<Block*>(const_cast<int8_t*>(xblk.data()));
 	  return subgraphSet->insertPrev(vtxno,nextBlkno,blk);
   }
 
-  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawBlk) {
-	  Block *blk=reinterpret_cast<Block*>(const_cast<int8_t*>(rawBlk.data()));
+  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk) {
+	  Block *blk=reinterpret_cast<Block*>(const_cast<int8_t*>(xblk.data()));
 	  return subgraphSet->insertNext(vtxno,prevBlkno,blk);
   }
 
@@ -125,8 +133,8 @@ class ProviderHandler : virtual public ProviderIf {
 	  }
   }
 
-  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk) {
-	  Block *newHeadBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newRawHeadBlk.data()));
+  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk) {
+	  Block *newHeadBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newXHeadBlk.data()));
 	  return subgraphSet->unshift(vtxno,newHeadBlk);
   }
 
@@ -139,8 +147,8 @@ class ProviderHandler : virtual public ProviderIf {
 	  }
   }
 
-  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk) {
-	  Block* newTailBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newRawTailBlk.data()));
+  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk) {
+	  Block* newTailBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newXTailBlk.data()));
 	  return subgraphSet->push(vtxno,newTailBlk); 
   }
 

@@ -1,6 +1,6 @@
 #include<nynn_mm_subgraph_storage.h>
 #include<test.h>
-unique_ptr<SubgraphCache> cache(new SubgraphCache());
+unique_ptr<GraphCache> cache(new GraphCache());
 uint32_t hitN=0;
 uint32_t accessN=0;
 Monitor hitMonitor;

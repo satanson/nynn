@@ -27,13 +27,15 @@ class ProviderIf {
   virtual int32_t getSize(const int32_t vtxno) = 0;
   virtual int32_t getHeadBlkno(const int32_t vtxno) = 0;
   virtual int32_t getTailBlkno(const int32_t vtxno) = 0;
+  virtual void readAllBlknos(std::vector<int32_t> & _return, const int32_t vtxno) = 0;
   virtual void read(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno) = 0;
-  virtual int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk) = 0;
-  virtual int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk) = 0;
+  virtual void readn(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno, const int32_t n) = 0;
+  virtual int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk) = 0;
+  virtual int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk) = 0;
   virtual bool remove(const int32_t vtxno, const int32_t blkno) = 0;
-  virtual int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk) = 0;
+  virtual int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk) = 0;
   virtual bool shift(const int32_t vtxno) = 0;
-  virtual int32_t push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk) = 0;
+  virtual int32_t push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk) = 0;
   virtual bool pop(const int32_t vtxno) = 0;
 };
 
@@ -107,14 +109,20 @@ class ProviderNull : virtual public ProviderIf {
     int32_t _return = 0;
     return _return;
   }
+  void readAllBlknos(std::vector<int32_t> & /* _return */, const int32_t /* vtxno */) {
+    return;
+  }
   void read(std::vector<int8_t> & /* _return */, const int32_t /* vtxno */, const int32_t /* blkno */) {
     return;
   }
-  int32_t insertPrev(const int32_t /* vtxno */, const int32_t /* nextBlkno */, const std::vector<int8_t> & /* rawblk */) {
+  void readn(std::vector<int8_t> & /* _return */, const int32_t /* vtxno */, const int32_t /* blkno */, const int32_t /* n */) {
+    return;
+  }
+  int32_t insertPrev(const int32_t /* vtxno */, const int32_t /* nextBlkno */, const std::vector<int8_t> & /* xblk */) {
     int32_t _return = 0;
     return _return;
   }
-  int32_t insertNext(const int32_t /* vtxno */, const int32_t /* prevBlkno */, const std::vector<int8_t> & /* rawblk */) {
+  int32_t insertNext(const int32_t /* vtxno */, const int32_t /* prevBlkno */, const std::vector<int8_t> & /* xblk */) {
     int32_t _return = 0;
     return _return;
   }
@@ -122,7 +130,7 @@ class ProviderNull : virtual public ProviderIf {
     bool _return = false;
     return _return;
   }
-  int32_t unshift(const int32_t /* vtxno */, const std::vector<int8_t> & /* newRawHeadBlk */) {
+  int32_t unshift(const int32_t /* vtxno */, const std::vector<int8_t> & /* newXHeadBlk */) {
     int32_t _return = 0;
     return _return;
   }
@@ -130,7 +138,7 @@ class ProviderNull : virtual public ProviderIf {
     bool _return = false;
     return _return;
   }
-  int32_t push(const int32_t /* vtxno */, const std::vector<int8_t> & /* newRawTailBlk */) {
+  int32_t push(const int32_t /* vtxno */, const std::vector<int8_t> & /* newXTailBlk */) {
     int32_t _return = 0;
     return _return;
   }
@@ -1309,6 +1317,114 @@ class Provider_getTailBlkno_presult {
 
 };
 
+typedef struct _Provider_readAllBlknos_args__isset {
+  _Provider_readAllBlknos_args__isset() : vtxno(false) {}
+  bool vtxno;
+} _Provider_readAllBlknos_args__isset;
+
+class Provider_readAllBlknos_args {
+ public:
+
+  Provider_readAllBlknos_args() : vtxno(0) {
+  }
+
+  virtual ~Provider_readAllBlknos_args() throw() {}
+
+  int32_t vtxno;
+
+  _Provider_readAllBlknos_args__isset __isset;
+
+  void __set_vtxno(const int32_t val) {
+    vtxno = val;
+  }
+
+  bool operator == (const Provider_readAllBlknos_args & rhs) const
+  {
+    if (!(vtxno == rhs.vtxno))
+      return false;
+    return true;
+  }
+  bool operator != (const Provider_readAllBlknos_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Provider_readAllBlknos_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class Provider_readAllBlknos_pargs {
+ public:
+
+
+  virtual ~Provider_readAllBlknos_pargs() throw() {}
+
+  const int32_t* vtxno;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _Provider_readAllBlknos_result__isset {
+  _Provider_readAllBlknos_result__isset() : success(false) {}
+  bool success;
+} _Provider_readAllBlknos_result__isset;
+
+class Provider_readAllBlknos_result {
+ public:
+
+  Provider_readAllBlknos_result() {
+  }
+
+  virtual ~Provider_readAllBlknos_result() throw() {}
+
+  std::vector<int32_t>  success;
+
+  _Provider_readAllBlknos_result__isset __isset;
+
+  void __set_success(const std::vector<int32_t> & val) {
+    success = val;
+  }
+
+  bool operator == (const Provider_readAllBlknos_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const Provider_readAllBlknos_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Provider_readAllBlknos_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _Provider_readAllBlknos_presult__isset {
+  _Provider_readAllBlknos_presult__isset() : success(false) {}
+  bool success;
+} _Provider_readAllBlknos_presult__isset;
+
+class Provider_readAllBlknos_presult {
+ public:
+
+
+  virtual ~Provider_readAllBlknos_presult() throw() {}
+
+  std::vector<int32_t> * success;
+
+  _Provider_readAllBlknos_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 typedef struct _Provider_read_args__isset {
   _Provider_read_args__isset() : vtxno(false), blkno(false) {}
   bool vtxno;
@@ -1426,11 +1542,137 @@ class Provider_read_presult {
 
 };
 
+typedef struct _Provider_readn_args__isset {
+  _Provider_readn_args__isset() : vtxno(false), blkno(false), n(false) {}
+  bool vtxno;
+  bool blkno;
+  bool n;
+} _Provider_readn_args__isset;
+
+class Provider_readn_args {
+ public:
+
+  Provider_readn_args() : vtxno(0), blkno(0), n(0) {
+  }
+
+  virtual ~Provider_readn_args() throw() {}
+
+  int32_t vtxno;
+  int32_t blkno;
+  int32_t n;
+
+  _Provider_readn_args__isset __isset;
+
+  void __set_vtxno(const int32_t val) {
+    vtxno = val;
+  }
+
+  void __set_blkno(const int32_t val) {
+    blkno = val;
+  }
+
+  void __set_n(const int32_t val) {
+    n = val;
+  }
+
+  bool operator == (const Provider_readn_args & rhs) const
+  {
+    if (!(vtxno == rhs.vtxno))
+      return false;
+    if (!(blkno == rhs.blkno))
+      return false;
+    if (!(n == rhs.n))
+      return false;
+    return true;
+  }
+  bool operator != (const Provider_readn_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Provider_readn_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class Provider_readn_pargs {
+ public:
+
+
+  virtual ~Provider_readn_pargs() throw() {}
+
+  const int32_t* vtxno;
+  const int32_t* blkno;
+  const int32_t* n;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _Provider_readn_result__isset {
+  _Provider_readn_result__isset() : success(false) {}
+  bool success;
+} _Provider_readn_result__isset;
+
+class Provider_readn_result {
+ public:
+
+  Provider_readn_result() {
+  }
+
+  virtual ~Provider_readn_result() throw() {}
+
+  std::vector<int8_t>  success;
+
+  _Provider_readn_result__isset __isset;
+
+  void __set_success(const std::vector<int8_t> & val) {
+    success = val;
+  }
+
+  bool operator == (const Provider_readn_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const Provider_readn_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Provider_readn_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _Provider_readn_presult__isset {
+  _Provider_readn_presult__isset() : success(false) {}
+  bool success;
+} _Provider_readn_presult__isset;
+
+class Provider_readn_presult {
+ public:
+
+
+  virtual ~Provider_readn_presult() throw() {}
+
+  std::vector<int8_t> * success;
+
+  _Provider_readn_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 typedef struct _Provider_insertPrev_args__isset {
-  _Provider_insertPrev_args__isset() : vtxno(false), nextBlkno(false), rawblk(false) {}
+  _Provider_insertPrev_args__isset() : vtxno(false), nextBlkno(false), xblk(false) {}
   bool vtxno;
   bool nextBlkno;
-  bool rawblk;
+  bool xblk;
 } _Provider_insertPrev_args__isset;
 
 class Provider_insertPrev_args {
@@ -1443,7 +1685,7 @@ class Provider_insertPrev_args {
 
   int32_t vtxno;
   int32_t nextBlkno;
-  std::vector<int8_t>  rawblk;
+  std::vector<int8_t>  xblk;
 
   _Provider_insertPrev_args__isset __isset;
 
@@ -1455,8 +1697,8 @@ class Provider_insertPrev_args {
     nextBlkno = val;
   }
 
-  void __set_rawblk(const std::vector<int8_t> & val) {
-    rawblk = val;
+  void __set_xblk(const std::vector<int8_t> & val) {
+    xblk = val;
   }
 
   bool operator == (const Provider_insertPrev_args & rhs) const
@@ -1465,7 +1707,7 @@ class Provider_insertPrev_args {
       return false;
     if (!(nextBlkno == rhs.nextBlkno))
       return false;
-    if (!(rawblk == rhs.rawblk))
+    if (!(xblk == rhs.xblk))
       return false;
     return true;
   }
@@ -1489,7 +1731,7 @@ class Provider_insertPrev_pargs {
 
   const int32_t* vtxno;
   const int32_t* nextBlkno;
-  const std::vector<int8_t> * rawblk;
+  const std::vector<int8_t> * xblk;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
@@ -1553,10 +1795,10 @@ class Provider_insertPrev_presult {
 };
 
 typedef struct _Provider_insertNext_args__isset {
-  _Provider_insertNext_args__isset() : vtxno(false), prevBlkno(false), rawblk(false) {}
+  _Provider_insertNext_args__isset() : vtxno(false), prevBlkno(false), xblk(false) {}
   bool vtxno;
   bool prevBlkno;
-  bool rawblk;
+  bool xblk;
 } _Provider_insertNext_args__isset;
 
 class Provider_insertNext_args {
@@ -1569,7 +1811,7 @@ class Provider_insertNext_args {
 
   int32_t vtxno;
   int32_t prevBlkno;
-  std::vector<int8_t>  rawblk;
+  std::vector<int8_t>  xblk;
 
   _Provider_insertNext_args__isset __isset;
 
@@ -1581,8 +1823,8 @@ class Provider_insertNext_args {
     prevBlkno = val;
   }
 
-  void __set_rawblk(const std::vector<int8_t> & val) {
-    rawblk = val;
+  void __set_xblk(const std::vector<int8_t> & val) {
+    xblk = val;
   }
 
   bool operator == (const Provider_insertNext_args & rhs) const
@@ -1591,7 +1833,7 @@ class Provider_insertNext_args {
       return false;
     if (!(prevBlkno == rhs.prevBlkno))
       return false;
-    if (!(rawblk == rhs.rawblk))
+    if (!(xblk == rhs.xblk))
       return false;
     return true;
   }
@@ -1615,7 +1857,7 @@ class Provider_insertNext_pargs {
 
   const int32_t* vtxno;
   const int32_t* prevBlkno;
-  const std::vector<int8_t> * rawblk;
+  const std::vector<int8_t> * xblk;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
@@ -1796,9 +2038,9 @@ class Provider_remove_presult {
 };
 
 typedef struct _Provider_unshift_args__isset {
-  _Provider_unshift_args__isset() : vtxno(false), newRawHeadBlk(false) {}
+  _Provider_unshift_args__isset() : vtxno(false), newXHeadBlk(false) {}
   bool vtxno;
-  bool newRawHeadBlk;
+  bool newXHeadBlk;
 } _Provider_unshift_args__isset;
 
 class Provider_unshift_args {
@@ -1810,7 +2052,7 @@ class Provider_unshift_args {
   virtual ~Provider_unshift_args() throw() {}
 
   int32_t vtxno;
-  std::vector<int8_t>  newRawHeadBlk;
+  std::vector<int8_t>  newXHeadBlk;
 
   _Provider_unshift_args__isset __isset;
 
@@ -1818,15 +2060,15 @@ class Provider_unshift_args {
     vtxno = val;
   }
 
-  void __set_newRawHeadBlk(const std::vector<int8_t> & val) {
-    newRawHeadBlk = val;
+  void __set_newXHeadBlk(const std::vector<int8_t> & val) {
+    newXHeadBlk = val;
   }
 
   bool operator == (const Provider_unshift_args & rhs) const
   {
     if (!(vtxno == rhs.vtxno))
       return false;
-    if (!(newRawHeadBlk == rhs.newRawHeadBlk))
+    if (!(newXHeadBlk == rhs.newXHeadBlk))
       return false;
     return true;
   }
@@ -1849,7 +2091,7 @@ class Provider_unshift_pargs {
   virtual ~Provider_unshift_pargs() throw() {}
 
   const int32_t* vtxno;
-  const std::vector<int8_t> * newRawHeadBlk;
+  const std::vector<int8_t> * newXHeadBlk;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
@@ -2021,9 +2263,9 @@ class Provider_shift_presult {
 };
 
 typedef struct _Provider_push_args__isset {
-  _Provider_push_args__isset() : vtxno(false), newRawTailBlk(false) {}
+  _Provider_push_args__isset() : vtxno(false), newXTailBlk(false) {}
   bool vtxno;
-  bool newRawTailBlk;
+  bool newXTailBlk;
 } _Provider_push_args__isset;
 
 class Provider_push_args {
@@ -2035,7 +2277,7 @@ class Provider_push_args {
   virtual ~Provider_push_args() throw() {}
 
   int32_t vtxno;
-  std::vector<int8_t>  newRawTailBlk;
+  std::vector<int8_t>  newXTailBlk;
 
   _Provider_push_args__isset __isset;
 
@@ -2043,15 +2285,15 @@ class Provider_push_args {
     vtxno = val;
   }
 
-  void __set_newRawTailBlk(const std::vector<int8_t> & val) {
-    newRawTailBlk = val;
+  void __set_newXTailBlk(const std::vector<int8_t> & val) {
+    newXTailBlk = val;
   }
 
   bool operator == (const Provider_push_args & rhs) const
   {
     if (!(vtxno == rhs.vtxno))
       return false;
-    if (!(newRawTailBlk == rhs.newRawTailBlk))
+    if (!(newXTailBlk == rhs.newXTailBlk))
       return false;
     return true;
   }
@@ -2074,7 +2316,7 @@ class Provider_push_pargs {
   virtual ~Provider_push_pargs() throw() {}
 
   const int32_t* vtxno;
-  const std::vector<int8_t> * newRawTailBlk;
+  const std::vector<int8_t> * newXTailBlk;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
@@ -2298,26 +2540,32 @@ class ProviderClient : virtual public ProviderIf {
   int32_t getTailBlkno(const int32_t vtxno);
   void send_getTailBlkno(const int32_t vtxno);
   int32_t recv_getTailBlkno();
+  void readAllBlknos(std::vector<int32_t> & _return, const int32_t vtxno);
+  void send_readAllBlknos(const int32_t vtxno);
+  void recv_readAllBlknos(std::vector<int32_t> & _return);
   void read(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno);
   void send_read(const int32_t vtxno, const int32_t blkno);
   void recv_read(std::vector<int8_t> & _return);
-  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk);
-  void send_insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk);
+  void readn(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno, const int32_t n);
+  void send_readn(const int32_t vtxno, const int32_t blkno, const int32_t n);
+  void recv_readn(std::vector<int8_t> & _return);
+  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk);
+  void send_insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk);
   int32_t recv_insertPrev();
-  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk);
-  void send_insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk);
+  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk);
+  void send_insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk);
   int32_t recv_insertNext();
   bool remove(const int32_t vtxno, const int32_t blkno);
   void send_remove(const int32_t vtxno, const int32_t blkno);
   bool recv_remove();
-  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk);
-  void send_unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk);
+  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk);
+  void send_unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk);
   int32_t recv_unshift();
   bool shift(const int32_t vtxno);
   void send_shift(const int32_t vtxno);
   bool recv_shift();
-  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk);
-  void send_push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk);
+  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk);
+  void send_push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk);
   int32_t recv_push();
   bool pop(const int32_t vtxno);
   void send_pop(const int32_t vtxno);
@@ -2348,7 +2596,9 @@ class ProviderProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_getSize(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_getHeadBlkno(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_getTailBlkno(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_readAllBlknos(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_read(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_readn(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_insertPrev(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_insertNext(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_remove(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
@@ -2370,7 +2620,9 @@ class ProviderProcessor : public ::apache::thrift::TDispatchProcessor {
     processMap_["getSize"] = &ProviderProcessor::process_getSize;
     processMap_["getHeadBlkno"] = &ProviderProcessor::process_getHeadBlkno;
     processMap_["getTailBlkno"] = &ProviderProcessor::process_getTailBlkno;
+    processMap_["readAllBlknos"] = &ProviderProcessor::process_readAllBlknos;
     processMap_["read"] = &ProviderProcessor::process_read;
+    processMap_["readn"] = &ProviderProcessor::process_readn;
     processMap_["insertPrev"] = &ProviderProcessor::process_insertPrev;
     processMap_["insertNext"] = &ProviderProcessor::process_insertNext;
     processMap_["remove"] = &ProviderProcessor::process_remove;
@@ -2506,6 +2758,16 @@ class ProviderMultiface : virtual public ProviderIf {
     return ifaces_[i]->getTailBlkno(vtxno);
   }
 
+  void readAllBlknos(std::vector<int32_t> & _return, const int32_t vtxno) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->readAllBlknos(_return, vtxno);
+    }
+    ifaces_[i]->readAllBlknos(_return, vtxno);
+    return;
+  }
+
   void read(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno) {
     size_t sz = ifaces_.size();
     size_t i = 0;
@@ -2516,22 +2778,32 @@ class ProviderMultiface : virtual public ProviderIf {
     return;
   }
 
-  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & rawblk) {
+  void readn(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno, const int32_t n) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->insertPrev(vtxno, nextBlkno, rawblk);
+      ifaces_[i]->readn(_return, vtxno, blkno, n);
     }
-    return ifaces_[i]->insertPrev(vtxno, nextBlkno, rawblk);
+    ifaces_[i]->readn(_return, vtxno, blkno, n);
+    return;
   }
 
-  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & rawblk) {
+  int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & xblk) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->insertNext(vtxno, prevBlkno, rawblk);
+      ifaces_[i]->insertPrev(vtxno, nextBlkno, xblk);
     }
-    return ifaces_[i]->insertNext(vtxno, prevBlkno, rawblk);
+    return ifaces_[i]->insertPrev(vtxno, nextBlkno, xblk);
+  }
+
+  int32_t insertNext(const int32_t vtxno, const int32_t prevBlkno, const std::vector<int8_t> & xblk) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->insertNext(vtxno, prevBlkno, xblk);
+    }
+    return ifaces_[i]->insertNext(vtxno, prevBlkno, xblk);
   }
 
   bool remove(const int32_t vtxno, const int32_t blkno) {
@@ -2543,13 +2815,13 @@ class ProviderMultiface : virtual public ProviderIf {
     return ifaces_[i]->remove(vtxno, blkno);
   }
 
-  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newRawHeadBlk) {
+  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->unshift(vtxno, newRawHeadBlk);
+      ifaces_[i]->unshift(vtxno, newXHeadBlk);
     }
-    return ifaces_[i]->unshift(vtxno, newRawHeadBlk);
+    return ifaces_[i]->unshift(vtxno, newXHeadBlk);
   }
 
   bool shift(const int32_t vtxno) {
@@ -2561,13 +2833,13 @@ class ProviderMultiface : virtual public ProviderIf {
     return ifaces_[i]->shift(vtxno);
   }
 
-  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newRawTailBlk) {
+  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->push(vtxno, newRawTailBlk);
+      ifaces_[i]->push(vtxno, newXTailBlk);
     }
-    return ifaces_[i]->push(vtxno, newRawTailBlk);
+    return ifaces_[i]->push(vtxno, newXTailBlk);
   }
 
   bool pop(const int32_t vtxno) {

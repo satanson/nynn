@@ -24,6 +24,7 @@ public:
 	
 	typedef map<uint32_t,shared_ptr<SubgraphStorageT> > SubgraphMap;
 	typedef typename SubgraphMap::iterator SubgraphMapIterator;
+	typedef typename Block::BlockHeader BlockHeader;
 
 	SubgraphSetType(const string &subgraphSetBasedir):m_subgraphSetBasedir(subgraphSetBasedir)
 	{
@@ -169,9 +170,43 @@ public:
 		return getSubgraph(vtxno)->getVertex(vtxno)->getTailBlkno();	
 	}
 
-	void read(uint32_t vtxno,uint32_t blkno,Block *blk)	
+	void readAllBlknos(uint32_t vtxno,vector<int32_t>& blknos)
 	{
-		getSubgraph(vtxno)->readBlock(blkno,blk);
+		blknos.resize(0);
+		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
+
+		BlockHeader header;
+		uint32_t no=subgraph->getVertex(vtxno)->getHeadBlkno();
+		while(no!=INVALID_BLOCKNO){
+			blknos.push_back(no);
+			no=subgraph->readBlockHeader(no,&header)->getNext();
+		}
+	}
+
+	Block* read(uint32_t vtxno,uint32_t blkno,Block *blk)	
+	{
+		return getSubgraph(vtxno)->readBlock(blkno,blk);
+	}
+
+	void readn(uint32_t vtxno,uint32_t blkno,int32_t n, vector<int8_t>& xblk)
+	{
+		shared_ptr<SubgraphStorageT> &subgraph=getSubgraph(vtxno);
+		uint32_t (BlockHeader::*next)() 
+			= n>0? 
+			  &BlockHeader::getNext
+			  :
+			  &BlockHeader::getPrev
+			  ;
+
+		xblk.reserve(n*sizeof(Block));
+		n=abs(n);
+		int32_t i=0;
+		while (i<n && blkno!=INVALID_BLOCKNO){
+			xblk.resize((i+1)*sizeof(Block));
+			Block *blk=reinterpret_cast<Block*>(&xblk[i*sizeof(Block)]);
+			subgraph->readBlock(blkno,blk);
+			blkno=(blk->getHeader()->*next)();
+		}
 	}
 
 	uint32_t getSize(uint32_t vtxno)

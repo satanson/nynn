@@ -4,7 +4,7 @@ using namespace nynn::mm;
 int main(int argc,char**argv)
 {
 	printf("pre SubgraphCache\n");
-	unique_ptr<SubgraphCache> cache(new SubgraphCache());
+	unique_ptr<GraphCache> cache(new GraphCache());
 	printf("post SubgraphCache\n");
 	uint32_t access=0;
 	uint32_t hit=0;

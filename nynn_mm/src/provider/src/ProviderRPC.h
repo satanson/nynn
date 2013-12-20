@@ -52,9 +52,19 @@ public:
 
 	int32_t getTailBlkno(const int32_t vtxno) { return client->getTailBlkno(vtxno);}
 
-	void read(std::vector<int8_t> & rawBlk, const int32_t vtxno, const int32_t blkno) 
+	void readAllBlknos(uint32_t vtxno,std::vector<int32_t>& blknos)
+	{
+		client->readAllBlknos(blknos,vtxno);
+	}
+
+	void read(const int32_t vtxno,const int32_t blkno, std::vector<int8_t> & blk) 
 	{ 
-		client->read(rawBlk, vtxno, blkno);
+		client->read(blk, vtxno, blkno);
+	}
+
+	void readn(const int32_t vtxno,const int32_t blkno, const int32_t n,std::vector<int8_t>& xblks)
+	{
+		client->readn(xblks,vtxno,blkno,n);
 	}
 
 	int32_t insertPrev(const int32_t vtxno, const int32_t nextBlkno, const std::vector<int8_t> & blk) 

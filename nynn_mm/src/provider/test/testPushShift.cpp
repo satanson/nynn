@@ -56,7 +56,7 @@ int main(int argc,char**argv)
 	}
 	prov.unlock(vtxno);
 	uint32_t tailBlkno=prov.getTailBlkno(vtxno);
-	prov.read(xblk,vtxno,tailBlkno);
+	prov.read(vtxno,tailBlkno,xblk);
 	string s;
 	s.resize(content->size());
 	std::copy(content->begin(),content->end(),s.begin());
@@ -68,7 +68,7 @@ int main(int argc,char**argv)
 	uint32_t blkno=prov.getHeadBlkno(vtxno);
 	i=0;
 	while(blkno!=INVALID_BLOCKNO){
-		prov.read(xblk,vtxno,blkno);
+		prov.read(vtxno,blkno,xblk);
 		memcpy(dstBase+i,content->begin(),content->size());
 		log_i("read[%d,%d) %d Bytes",i,i+content->size(),content->size());
 		i+=content->size();
