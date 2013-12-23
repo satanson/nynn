@@ -9,15 +9,13 @@ namespace nynn{namespace mm{
 
 class Graph{
 public:
-	typedef string string;
-	typedef uint32_t uint32_t;
 	typedef map<string,std::shared_ptr<ProviderRPC> > Host2PrividerMap;
 	typedef map<uint32_t,string> Subgraph2HostMap;
 	typedef Host2PrividerMap::iterator Host2PrividerMapIterator;
 	typedef Subgraph2HostMap::iterator Subgraph2HostMapIterator;
 
 	Graph(string selfHost,uint32_t port,vector<string> hostnames)
-		:m_selfHost(selfHost),m_port(port);
+		:m_self(selfHost),m_port(port)
 	{
 		try{
 			//construct ProviderRPC objects.
@@ -30,7 +28,7 @@ public:
 		}
 	}
 
-	void getLocalSubgraphKeys(vector<int8_t> keys)
+	void getLocalSubgraphKeys(vector<int32_t> keys)
 	{
 		keys.resize(0);
 		Host2PrividerMapIterator it=m_host2ProviderMap.find(m_self);
@@ -43,10 +41,10 @@ public:
 		m_subgraph2HostMap[key]=hostname;
 	}
 
-	void setSubgraph2HostMap(const Subgraph2HostMap & s2hMap)
+	void setSubgraph2HostMap(Subgraph2HostMap & s2hMap)
 	{
 		ExclusiveSynchronization s(&m_subgraph2HostMapRWLock);
-		std::swap(m_subgraph2HostMap,s2hMap);
+		std::swap(s2hMap,m_subgraph2HostMap);
 	}
 
 	void refresh()
