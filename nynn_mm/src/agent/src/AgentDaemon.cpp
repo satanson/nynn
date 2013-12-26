@@ -24,7 +24,10 @@ using namespace ::apache::thrift::concurrency;
 using boost::shared_ptr;
 
 using namespace  ::nynn::mm;
-
+boost::shared_ptr<Graph> graph;
+int prodPort=0;
+int provPort=0;
+int agentPort=0;
 class AgentHandler : virtual public AgentIf {
  public:
   AgentHandler() {
@@ -32,34 +35,39 @@ class AgentHandler : virtual public AgentIf {
   }
 
   bool lock(const int32_t vtxno) {
-    // Your implementation goes here
-    printf("lock\n");
+	  return graph->lock(vtxno,false);
   }
 
   bool unlock(const int32_t vtxno) {
-    // Your implementation goes here
-    printf("unlock\n");
+	  return graph->unlock(vtxno);
   }
 
   int32_t getHeadBlkno(const int32_t vtxno) {
-    // Your implementation goes here
-    printf("getHeadBlkno\n");
+	  return graph->getHeadBlkno(vtxno);
   }
 
   int32_t getTailBlkno(const int32_t vtxno) {
-    // Your implementation goes here
-    printf("getTailBlkno\n");
+	  return getTailBlkno(vtxno);
   }
 
-  void read(std::vector<int8_t> & _return, const int32_t vtxno, const int32_t blkno) {
-    // Your implementation goes here
-    printf("read\n");
+  void read(std::vector<int8_t> & xblk, const int32_t vtxno, const int32_t blkno) {
+	  graph->read(vtxno,blkno,xblk);
   }
 
 };
 
 int main(int argc, char **argv) {
-	int port =strtoul(getenv("AGENT_PORT"),NULL,0);
+	
+	string prodHost=getenv("PRODUCER_HOST");
+	string localHost=gethost();
+	prodPort =strtoul(getenv("PRODUCER_PORT"),NULL,0);
+	provPort =strtoul(getenv("PROVIDER_PORT"),NULL,0);
+	agentPort =strtoul(getenv("AGENT_PORT"),NULL,0);
+	string provConf=getenv("PROVIDER_CONF");
+	ifstream fin(provConf);
+	vector<string> hosts;
+	gettuple(fin,hosts);
+	graph.reset(new Graph(prodHost,prodPort,localHost,provPort,hosts));
 
 	boost::shared_ptr<AgentHandler> handler(new AgentHandler());
 	boost::shared_ptr<TProcessor> processor(new AgentProcessor(handler));
@@ -71,7 +79,7 @@ int main(int argc, char **argv) {
 	boost::shared_ptr<ThreadManager> threadManager=ThreadManager::newSimpleThreadManager(10,4);
 	threadManager->threadFactory(pthreadFactory);
 
-	TNonblockingServer server(processor,transportFactory,transportFactory,protocolFactory,protocolFactory,port,threadManager);
+	TNonblockingServer server(processor,transportFactory,transportFactory,protocolFactory,protocolFactory,agentPort,threadManager);
 	threadManager->start();
 	server.serve();
 	return 0;

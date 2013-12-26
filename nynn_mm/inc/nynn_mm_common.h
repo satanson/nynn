@@ -98,6 +98,7 @@ void log(ostream& out,const char*file,const int line,
 		const char *function,const int level,int errnum,const char *fmt,...);
 int rand_int();
 bool file_exist(const string& m_path);
+string gethost();
 uint32_t gethostaddr(string &hostname);
 time_t str2time(const char*str);
 string time2str(time_t t);
@@ -122,6 +123,12 @@ vector<vector<string> >& gettuplearray(istream & inputstream,vector<vector<strin
 
 #define throwNynnException(msg) \
    	throw NynnException(__FILE__,__LINE__,__FUNCTION__,(msg))
+string gethost()
+{
+	char host[128];
+	gethostname(host,sizeof(host));
+	return string(host,host+strlen(host));
+}
 
 inline uint32_t gethostaddr(string &hostname)
 {
@@ -202,9 +209,7 @@ inline vector<string> & gettuple(istream &inputstream,vector<string>&t)
 {
 	string word;
 	t.resize(0);
-	word.reserve(64);
-	while(!inputstream.eof()){
-		inputstream>>word;
+	while(inputstream>>word){
 		t.push_back(word);
 	}
 	return t;

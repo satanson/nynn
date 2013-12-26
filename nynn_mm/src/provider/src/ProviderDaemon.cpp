@@ -133,8 +133,8 @@ class ProviderHandler : virtual public ProviderIf {
 	  }
   }
 
-  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newXHeadBlk) {
-	  Block *newHeadBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newXHeadBlk.data()));
+  int32_t unshift(const int32_t vtxno, const std::vector<int8_t> & newHeadXBlk) {
+	  Block *newHeadBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newHeadXBlk.data()));
 	  return subgraphSet->unshift(vtxno,newHeadBlk);
   }
 
@@ -147,8 +147,8 @@ class ProviderHandler : virtual public ProviderIf {
 	  }
   }
 
-  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newXTailBlk) {
-	  Block* newTailBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newXTailBlk.data()));
+  int32_t push(const int32_t vtxno, const std::vector<int8_t> & newTailXBlk) {
+	  Block* newTailBlk=reinterpret_cast<Block*>(const_cast<int8_t*>(newTailXBlk.data()));
 	  return subgraphSet->push(vtxno,newTailBlk); 
   }
 

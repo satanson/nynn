@@ -7,10 +7,12 @@ progs:= formatSubgraph testAccessSubgraph testMultiAccessSubgraph \
         testSubgraphCache testSynchronization testMultiAccessCache \
 		testBlock testPushShift testUnshiftPop testUnshiftShift \
 		testPushPop testInsertPrevRemove testInsertNextRemove \
-		testSubgraphSet testGraphTable testGraphTable0
+		testSubgraphSet 
 
 all:$(progs)
 
+testGetTuple:testGetTuple.cc
+	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testGraphTable0:testGraphTable0.cc
 	g++ $(DEBUG) $(FLAGS) -o $@ $^
 testGraphTable:testGraphTable.cc

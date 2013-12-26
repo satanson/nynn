@@ -1,3 +1,5 @@
+#ifndef NYNN_MM_GRAPH_TABLE_BY_SATANSON
+#define NYNN_MM_GRAPH_TABLE_BY_SATANSON
 #include<nynn_mm_common.h>
 using namespace std;
 using namespace nynn::mm::common;
@@ -160,8 +162,6 @@ public:
 	// update data.
 	int32_t create(uint32_t sgkey)
 	{
-		ExclusiveSynchronization es(&m_RWLock);
-
 		vector<string> hosts;
 		m_sLoad.selectReplicHosts(hosts,m_replica);
 		for (int i=0;i<hosts.size();i++){
@@ -175,8 +175,6 @@ public:
 	// update data.
 	int32_t destroy(uint32_t sgkey)
 	{
-		ExclusiveSynchronization es(&m_RWLock);
-
 		set<string>& hostSet=m_sgDist.getHosts(sgkey);
 		vector<string> hosts(hostSet.begin(),hostSet.end());
 		m_sLoad.deselectReplicHosts(hosts);
@@ -188,19 +186,18 @@ public:
 	// update data.
 	vector<string>& getHosts(uint32_t sgkey,vector<string>& hosts)
 	{
-		SharedSynchronization ss(&m_RWLock);
 		set<string>& hostSet=m_sgDist.getHosts(sgkey);
+
 		hosts.resize(0);
 		hosts.reserve(hostSet.size());
 		hosts.insert(hosts.end(),hostSet.begin(),hostSet.end());
 		
 		return hosts;
 	}
-	
+
 	//fault-tolerance: recycle corrupted subgraph
 	uint32_t recycle(uint32_t sgkey,const string& host)
 	{
-		ExclusiveSynchronization es(&m_RWLock);
 		m_sgDist.erase(sgkey,host);
 		m_corruptedSgDist.insert(sgkey,host);
 		m_sLoad.deselectHost(host);
@@ -214,7 +211,6 @@ public:
 	//fault-tolerance: restore corrupted subgraph
 	uint32_t restore(uint32_t sgkey,const string& host)
 	{
-		ExclusiveSynchronization es(&m_RWLock);
 		m_corruptedSgDist.erase(sgkey,host);
 		m_sgDist.insert(sgkey,host);
 		vector<string> hosts;
@@ -235,8 +231,6 @@ public:
 	//invoked by agent
 	uint32_t setAllSgkeys(const string& host,vector<uint32_t>& sgkeys)
 	{
-		ExclusiveSynchronization es(&m_RWLock);
-
 		m_sLoad.plus(host,sgkeys.size());
 		for (int i=0;i<sgkeys.size();i++){
 			uint32_t sgkey=sgkeys[i];
@@ -282,8 +276,7 @@ private:
 	Load   m_sLoad;//storage load
 	Load   m_aLoad;//access load
 	Partition m_partition;
-	RWLock m_RWLock;
 	uint32_t m_replica;
 };
 }}
-
+#endif

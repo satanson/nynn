@@ -322,7 +322,8 @@ ____partition____
 13->host3
 14->host7
 15->host7
-create
+getHosts
+getHosts: 16: ->host4->host6->host7
 ____subgraph distribution____
 1: -->'host1'-->'host4'-->'host5'
 2: -->'host1'-->'host5'
@@ -374,7 +375,8 @@ ____partition____
 14->host7
 15->host7
 16->host6
-create
+getHosts
+getHosts: 17: ->host3->host6->host7
 ____subgraph distribution____
 1: -->'host1'-->'host4'-->'host5'
 2: -->'host1'-->'host5'
@@ -428,6 +430,232 @@ ____partition____
 15->host7
 16->host6
 17->host3
+getHosts
+getHosts: 18: ->host4->host6->host7
+____subgraph distribution____
+1: -->'host1'-->'host4'-->'host5'
+2: -->'host1'-->'host5'
+3: -->'host1'-->'host2'-->'host5'
+4: -->'host1'-->'host2'-->'host4'
+5: -->'host1'-->'host2'-->'host5'
+6: -->'host1'-->'host5'
+7: -->'host1'-->'host2'-->'host4'
+8: -->'host2'-->'host5'
+9: -->'host2'-->'host5'
+10: -->'host2'-->'host5'-->'host6'
+11: -->'host3'-->'host4'-->'host5'
+12: -->'host3'
+13: -->'host3'
+14: -->'host3'-->'host7'
+15: -->'host3'-->'host7'
+16: -->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
+____corrupted subgraph Distribution____
+____storage load____
+host1: 7
+host2: 7
+host3: 6
+host4: 6
+host5: 9
+host6: 4
+host7: 5
+____access load____
+host1: 3
+host2: 2
+host3: 3
+host4: 3
+host5: 3
+host6: 2
+host7: 2
+____partition____
+1->host5
+2->host5
+3->host1
+4->host4
+5->host5
+6->host1
+7->host1
+8->host2
+9->host2
+10->host6
+11->host4
+12->host3
+13->host3
+14->host7
+15->host7
+16->host6
+17->host3
+18->host4
+getHosts
+getHosts: 18: ->host4->host6->host7
+____subgraph distribution____
+1: -->'host1'-->'host4'-->'host5'
+2: -->'host1'-->'host5'
+3: -->'host1'-->'host2'-->'host5'
+4: -->'host1'-->'host2'-->'host4'
+5: -->'host1'-->'host2'-->'host5'
+6: -->'host1'-->'host5'
+7: -->'host1'-->'host2'-->'host4'
+8: -->'host2'-->'host5'
+9: -->'host2'-->'host5'
+10: -->'host2'-->'host5'-->'host6'
+11: -->'host3'-->'host4'-->'host5'
+12: -->'host3'
+13: -->'host3'
+14: -->'host3'-->'host7'
+15: -->'host3'-->'host7'
+16: -->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
+____corrupted subgraph Distribution____
+____storage load____
+host1: 7
+host2: 7
+host3: 6
+host4: 6
+host5: 9
+host6: 4
+host7: 5
+____access load____
+host1: 3
+host2: 2
+host3: 3
+host4: 3
+host5: 3
+host6: 2
+host7: 2
+____partition____
+1->host5
+2->host5
+3->host1
+4->host4
+5->host5
+6->host1
+7->host1
+8->host2
+9->host2
+10->host6
+11->host4
+12->host3
+13->host3
+14->host7
+15->host7
+16->host6
+17->host3
+18->host4
+create
+____subgraph distribution____
+1: -->'host1'-->'host4'-->'host5'
+2: -->'host1'-->'host5'
+3: -->'host1'-->'host2'-->'host5'
+4: -->'host1'-->'host2'-->'host4'
+5: -->'host1'-->'host2'-->'host5'
+6: -->'host1'-->'host5'
+7: -->'host1'-->'host2'-->'host4'
+8: -->'host2'-->'host5'
+9: -->'host2'-->'host5'
+10: -->'host2'-->'host5'-->'host6'
+11: -->'host3'-->'host4'-->'host5'
+12: -->'host3'
+13: -->'host3'
+14: -->'host3'-->'host7'
+15: -->'host3'-->'host7'
+16: -->'host3'-->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
+____corrupted subgraph Distribution____
+____storage load____
+host1: 7
+host2: 7
+host3: 7
+host4: 6
+host5: 9
+host6: 5
+host7: 6
+____access load____
+host1: 3
+host2: 2
+host3: 3
+host4: 3
+host5: 3
+host6: 2
+host7: 2
+____partition____
+1->host5
+2->host5
+3->host1
+4->host4
+5->host5
+6->host1
+7->host1
+8->host2
+9->host2
+10->host6
+11->host4
+12->host3
+13->host3
+14->host7
+15->host7
+16->host6
+17->host3
+18->host4
+create
+____subgraph distribution____
+1: -->'host1'-->'host4'-->'host5'
+2: -->'host1'-->'host5'
+3: -->'host1'-->'host2'-->'host5'
+4: -->'host1'-->'host2'-->'host4'
+5: -->'host1'-->'host2'-->'host5'
+6: -->'host1'-->'host5'
+7: -->'host1'-->'host2'-->'host4'
+8: -->'host2'-->'host5'
+9: -->'host2'-->'host5'
+10: -->'host2'-->'host5'-->'host6'
+11: -->'host3'-->'host4'-->'host5'
+12: -->'host3'
+13: -->'host3'
+14: -->'host3'-->'host7'
+15: -->'host3'-->'host7'
+16: -->'host3'-->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host4'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
+____corrupted subgraph Distribution____
+____storage load____
+host1: 7
+host2: 7
+host3: 7
+host4: 7
+host5: 9
+host6: 6
+host7: 7
+____access load____
+host1: 3
+host2: 2
+host3: 3
+host4: 3
+host5: 3
+host6: 2
+host7: 2
+____partition____
+1->host5
+2->host5
+3->host1
+4->host4
+5->host5
+6->host1
+7->host1
+8->host2
+9->host2
+10->host6
+11->host4
+12->host3
+13->host3
+14->host7
+15->host7
+16->host6
+17->host3
+18->host4
 destroy
 ____subgraph distribution____
 2: -->'host1'-->'host5'
@@ -444,22 +672,23 @@ ____subgraph distribution____
 13: -->'host3'
 14: -->'host3'-->'host7'
 15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
+16: -->'host3'-->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host4'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
 ____corrupted subgraph Distribution____
 ____storage load____
 host1: 6
 host2: 7
-host3: 6
-host4: 4
+host3: 7
+host4: 6
 host5: 8
-host6: 3
-host7: 4
+host6: 6
+host7: 7
 ____access load____
 host1: 3
 host2: 2
 host3: 3
-host4: 2
+host4: 3
 host5: 2
 host6: 2
 host7: 2
@@ -480,112 +709,7 @@ ____partition____
 15->host7
 16->host6
 17->host3
-getHost
-getHost: 7->host1
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host2'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: -->'host1'-->'host2'-->'host4'
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-____storage load____
-host1: 6
-host2: 7
-host3: 6
-host4: 4
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 3
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-7->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-getHosts
-getHosts: 7: ->host1->host2->host4
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host2'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: -->'host1'-->'host2'-->'host4'
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-____storage load____
-host1: 6
-host2: 7
-host3: 6
-host4: 4
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 3
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-7->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
+18->host4
 destroy
 ____subgraph distribution____
 2: -->'host1'-->'host5'
@@ -601,22 +725,23 @@ ____subgraph distribution____
 13: -->'host3'
 14: -->'host3'-->'host7'
 15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
+16: -->'host3'-->'host4'-->'host6'-->'host7'
+17: -->'host3'-->'host4'-->'host6'-->'host7'
+18: -->'host4'-->'host6'-->'host7'
 ____corrupted subgraph Distribution____
 ____storage load____
 host1: 5
 host2: 6
-host3: 6
-host4: 3
+host3: 7
+host4: 5
 host5: 8
-host6: 3
-host7: 4
+host6: 6
+host7: 7
 ____access load____
 host1: 2
 host2: 2
 host3: 3
-host4: 2
+host4: 3
 host5: 2
 host6: 2
 host7: 2
@@ -636,596 +761,4 @@ ____partition____
 15->host7
 16->host6
 17->host3
-getHost
-getHost: 7->UNKNOWN
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host2'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-____storage load____
-host1: 5
-host2: 6
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-getHosts
-getHosts: 7: 
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host2'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-____storage load____
-host1: 5
-host2: 6
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-getHost
-getHost: 4->host4
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host2'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-____storage load____
-host1: 5
-host2: 6
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host2'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-____storage load____
-host1: 5
-host2: 5
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host2'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-____storage load____
-host1: 5
-host2: 4
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-____storage load____
-host1: 5
-host2: 3
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'-->'host5'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-9: -->'host2'
-____storage load____
-host1: 5
-host2: 2
-host3: 6
-host4: 3
-host5: 8
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 0
-host3: 3
-host4: 2
-host5: 3
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host5
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-9: -->'host2'
-11: -->'host5'
-____storage load____
-host1: 5
-host2: 2
-host3: 6
-host4: 3
-host5: 7
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 0
-host3: 3
-host4: 2
-host5: 3
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host5
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-recycle
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host5'
-10: -->'host2'-->'host6'
-11: -->'host3'-->'host4'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-9: -->'host2'
-10: -->'host5'
-11: -->'host5'
-____storage load____
-host1: 5
-host2: 2
-host3: 6
-host4: 3
-host5: 6
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 0
-host3: 3
-host4: 2
-host5: 3
-host6: 2
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host5
-10->host6
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-restore
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-9: -->'host2'
-11: -->'host5'
-____storage load____
-host1: 5
-host2: 2
-host3: 6
-host4: 3
-host5: 7
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 1
-host3: 3
-host4: 2
-host5: 3
-host6: 1
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host5
-10->host2
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
-restore
-____subgraph distribution____
-2: -->'host1'-->'host5'
-3: -->'host1'-->'host5'
-4: -->'host1'-->'host4'
-5: -->'host1'-->'host5'
-6: -->'host1'-->'host5'
-7: 
-8: -->'host2'-->'host5'
-9: -->'host2'-->'host5'
-10: -->'host2'-->'host5'-->'host6'
-11: -->'host3'-->'host4'
-12: -->'host3'
-13: -->'host3'
-14: -->'host3'-->'host7'
-15: -->'host3'-->'host7'
-16: -->'host4'-->'host6'-->'host7'
-17: -->'host3'-->'host6'-->'host7'
-____corrupted subgraph Distribution____
-3: -->'host2'
-4: -->'host2'
-5: -->'host2'
-11: -->'host5'
-____storage load____
-host1: 5
-host2: 3
-host3: 6
-host4: 3
-host5: 7
-host6: 3
-host7: 4
-____access load____
-host1: 2
-host2: 2
-host3: 3
-host4: 2
-host5: 2
-host6: 1
-host7: 2
-____partition____
-2->host5
-3->host1
-4->host4
-5->host5
-6->host1
-8->host2
-9->host2
-10->host2
-11->host4
-12->host3
-13->host3
-14->host7
-15->host7
-16->host6
-17->host3
+18->host4

@@ -92,7 +92,9 @@ public:
 		ExclusiveSynchronization es(&m_subgraphMapRWLock);
 		try{
 			string subgraphBasedir=makeSubgraphPath(subgraphKey);
-			m_subgraphMap[subgraphKey].reset(new SubgraphStorageT(subgraphBasedir));
+			if (m_subgraphMap.find(subgraphKey)==m_subgraphMap.end()){
+				m_subgraphMap[subgraphKey].reset(new SubgraphStorageT(subgraphBasedir));
+			}
 		}catch(NynnException &err){
 			throwNynnException("Fail to attach specified subgraph");
 		}

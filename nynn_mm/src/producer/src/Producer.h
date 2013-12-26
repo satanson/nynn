@@ -7,7 +7,7 @@
 #ifndef Producer_H
 #define Producer_H
 
-#include <arpa/inet.h>
+//#include <arpa/inet.h>
 #include <thrift/TDispatchProcessor.h>
 #include "Producer_types.h"
 

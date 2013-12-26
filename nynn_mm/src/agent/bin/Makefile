@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-vpath %.cpp ../test ../src
+vpath %.cpp ../test ../src ../../provider/src ../../producer/src
 
 BOOST_DIR = /usr/include/boost
 THRIFT_DIR = /usr/local/include/thrift
@@ -30,7 +30,9 @@ CXXFLAGS =--std=c++0x \
 		  -I${THRIFT_DIR} -I${BOOST_DIR}  -I. -L${LIB_DIR} -I${NYNN_MM_INC} -I${AGENT_DIR}\
 		  -I${PROVIDER_DIR} -I${PRODUCER_DIR} -lthrift -lthriftnb -levent
 
-GEN_SRC = Agent_constants.cpp Agent.cpp Agent_types.cpp
+GEN_SRC = Agent_constants.cpp Agent.cpp Agent_types.cpp\
+		  Producer_constants.cpp Producer.cpp Producer_types.cpp\
+		  Provider_constants.cpp Provider.cpp Provider_types.cpp
 
 default:agent 
 

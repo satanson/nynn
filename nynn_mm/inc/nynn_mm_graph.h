@@ -1,5 +1,6 @@
 #include<nynn_mm_config.h>
 #include<ProviderRPC.h>
+#include<ProducerRPC.h>
 using namespace std;
 using namespace nynn::mm::common;
 using namespace nynn::mm;
@@ -14,60 +15,39 @@ public:
 	typedef Host2PrividerMap::iterator Host2PrividerMapIterator;
 	typedef Subgraph2HostMap::iterator Subgraph2HostMapIterator;
 
-	Graph(string selfHost,uint32_t port,vector<string> hostnames)
-		:m_self(selfHost),m_port(port)
+	Graph(string prodHost,uint32_t prodPort,string selfHost,uint32_t port,vector<string> hosts)
+		:m_prodHost(prodHost),m_prodPort(prodPort),m_localHost(selfHost),m_provPort(port)
 	{
 		try{
+			//construct ProducerRPC object.
+			m_producer.reset(new ProducerRPC(m_prodHost,m_prodPort));
 			//construct ProviderRPC objects.
-			for (int i=0;i<hostnames.size();i++){
-				string &hostname=hostnames[i];
-				m_host2ProviderMap[hostname].reset(new ProviderRPC(hostname,m_port));
+			for (int i=0;i<hosts.size();i++){
+				string &host=hosts[i];
+				m_host2Provider[host].reset(new ProviderRPC(host,m_provPort));
 			}
+			vector<int32_t> sgkeys;
+			m_host2Provider[m_localHost]->getSubgraphKeys(sgkeys);
+			m_producer->report(m_localHost,sgkeys);
 		}catch(NynnException &ex){
 			throwNynnException("Failed to complete construction of Graph Object");
 		}
 	}
 
-	void getLocalSubgraphKeys(vector<int32_t> keys)
-	{
-		keys.resize(0);
-		Host2PrividerMapIterator it=m_host2ProviderMap.find(m_self);
-		if (it!=m_host2ProviderMap.end())m_host2ProviderMap[m_self]->getSubgraphKeys(keys);
-	}
 	
-	void setSubgraph2HostMap(const uint32_t &key, const string &hostname)
-	{
-		ExclusiveSynchronization es(&m_subgraph2HostMapRWLock);
-		m_subgraph2HostMap[key]=hostname;
-	}
-
-	void setSubgraph2HostMap(Subgraph2HostMap & s2hMap)
-	{
-		ExclusiveSynchronization s(&m_subgraph2HostMapRWLock);
-		std::swap(s2hMap,m_subgraph2HostMap);
-	}
-
-	void refresh()
-	{
-
-	}
 	
-	static uint32_t const IS_READABLE=SubgraphSet::IS_READABLE;
-	static uint32_t const IS_NONBLOCKING=SubgraphSet::IS_NONBLOCKING;
-	static uint32_t const IS_BLOCKING=SubgraphSet::IS_BLOCKING;
-
 	bool lock(uint32_t vtxno,bool nonblocking)
 	{
-		string hostname=getHostnameTS(vtxno);
+		string host=getHostTS(vtxno);
 		uint32_t flag=(nonblocking?IS_NONBLOCKING:IS_BLOCKING)|IS_READABLE;
 
-		if (hostname!="") return getProvider(hostname)->lock(vtxno,flag);
+		if (host!="UNKNOWN") return getProvider(host)->lock(vtxno,flag);
 
-		refresh();
+		refresh(vtxno);
 		
-		hostname=getHostnameTS(vtxno);
-		if (hostname!=""){
-			return getProvider(hostname)->lock(vtxno,flag);
+		host=getHostTS(vtxno);
+		if (host!="UNKNOWN"){
+			return getProvider(host)->lock(vtxno,flag);
 		}else{
 			return false;
 		}
@@ -75,24 +55,35 @@ public:
 
 	bool unlock(uint32_t vtxno)
 	{
-		string hostname=getHostnameTS(vtxno);
-		if (hostname!="") return getProvider(hostname)->unlock(vtxno);
+		string host=getHostTS(vtxno);
+		if (host!="") return getProvider(host)->unlock(vtxno);
 		return false;
 	}
 
 	uint32_t getHeadBlkno(uint32_t vtxno) { return getProvider(vtxno)->getHeadBlkno(vtxno); }
 	uint32_t getTailBlkno(uint32_t vtxno) { return getProvider(vtxno)->getTailBlkno(vtxno); }
 
-	bool read(vector<int8_t>& xblk,uint32_t vtxno,uint32_t blkno)
+	bool read(uint32_t vtxno,uint32_t blkno,vector<int8_t>& xblk)
 	{
-		string hostname=getHostname(vtxno);
+		string host=getHost(vtxno);
 		Block *blk=reinterpret_cast<Block*>(xblk.data());
 
-		if (isNative(hostname)){
-			getProvider(hostname)->read(vtxno,blkno,xblk);
-		}else if (isAlien(hostname)){
+		if (isNative(host)){
+			getProvider(host)->read(vtxno,blkno,xblk);
+		}else if (isAlien(host)){
 			if (!m_graphCache.read(vtxno,blkno,blk)){
-
+				vector<int8_t> xblks;
+				getProvider(host)->readn(vtxno,blkno,4096/sizeof(Block),xblks);
+				Block* blk=reinterpret_cast<Block*>(xblks.data());
+				int blkNum=xblks.size()/sizeof(Block);
+				int i=0;
+				std::copy(&xblks[0],&xblks[0]+sizeof(Block),xblk.begin());
+				do{
+					m_graphCache.write(vtxno,blkno,blk);
+					blkno=blk->getHeader()->getNext();
+					blk+=1;
+					i++;
+				}while(i<blkNum);
 			}
 		}else{
 			log_w("Oops! Never reach here!");
@@ -100,37 +91,48 @@ public:
 	}
 
 private:
-
 	//thread safe.
-	string getHostnameTS(uint32_t vtxno){
-		SharedSynchronization ss(&m_subgraph2HostMapRWLock);
+	string getHostTS(uint32_t vtxno){
+		SharedSynchronization ss(&m_subgraph2HostRWLock);
 		uint32_t subgraphKey=SubgraphSet::VTXNO2SUBGRAPH(vtxno);
-		if (m_subgraph2HostMap.find(subgraphKey)!=m_subgraph2HostMap.end()){
-			return m_subgraph2HostMap[subgraphKey];
+		if (m_subgraph2Host.find(subgraphKey)!=m_subgraph2Host.end()){
+			return m_subgraph2Host[subgraphKey];
 		}
-		return string("");
+		return "UNKNOWN";
 	}
-	string getHostname(uint32_t vtxno){
-		return m_subgraph2HostMap[SubgraphSet::VTXNO2SUBGRAPH(vtxno)];
+	string getHost(uint32_t vtxno){
+		return m_subgraph2Host[SubgraphSet::VTXNO2SUBGRAPH(vtxno)];
 	}
 
-	bool isNative(const string& hostname) { return m_self==hostname; }
-	bool isAlien(const string& hostname) { return m_self!=hostname; }
-
-	std::shared_ptr<ProviderRPC>& getProvider(const string& hostname)
+	void refresh(uint32_t vtxno)
 	{
-		return m_host2ProviderMap[hostname];
+		ExclusiveSynchronization  es(&m_subgraph2HostRWLock);
+		string host;
+		uint32_t sgkey=SubgraphSet::VTXNO2SUBGRAPH(vtxno);
+		m_producer->getHost(sgkey,host);
+		m_subgraph2Host[sgkey]=host;
+	}
+
+	bool isNative(const string& host) { return m_localHost==host; }
+	bool isAlien(const string& host) { return m_localHost!=host; }
+
+	std::shared_ptr<ProviderRPC>& getProvider(const string& host)
+	{
+		return m_host2Provider[host];
 	}
 
 	std::shared_ptr<ProviderRPC>& getProvider(uint32_t vtxno){
-		return m_host2ProviderMap[m_subgraph2HostMap[SubgraphSet::VTXNO2SUBGRAPH(vtxno)]];
+		return m_host2Provider[m_subgraph2Host[SubgraphSet::VTXNO2SUBGRAPH(vtxno)]];
 	}
 
-	string     m_self;
-	uint32_t 		 m_port;
-	Host2PrividerMap m_host2ProviderMap;
-	Subgraph2HostMap m_subgraph2HostMap;
+	string 	   m_prodHost;
+	uint32_t   m_prodPort;
+	std::shared_ptr<ProducerRPC> m_producer;
+	string     m_localHost;
+	uint32_t 		 m_provPort;
+	Host2PrividerMap m_host2Provider;
+	Subgraph2HostMap m_subgraph2Host;
 	GraphCache       m_graphCache;
-	RWLock 			 m_subgraph2HostMapRWLock;
+	RWLock 			 m_subgraph2HostRWLock;
 };
 }}
