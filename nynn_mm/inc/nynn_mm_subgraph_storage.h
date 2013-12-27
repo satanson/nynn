@@ -58,6 +58,11 @@ public:
 		}*m_data;
 
 		explicit SuperBlock(void *superblk=NULL ) { loadData(superblk); }
+		~SuperBlock()
+		{
+			msync(m_data,sizeof(Data),MS_SYNC);
+			munmap(m_data,sizeof(Data));
+		}
 		
 		static uint32_t const SIZE=sizeof(Data);
 		void     loadData(void*superblk) { m_data=static_cast<Data*>(superblk); }
@@ -188,6 +193,11 @@ public:
 		}catch(NynnException &err){
 			throwNynnException("Fail to construct SubgraphStorage object!");
 		}
+	}
+	~SubgraphStorageType()
+	{
+		msync(m_volume,sizeof(VOLUME_SIZE),MS_SYNC);
+		munmap(m_volume,sizeof(VOLUME_SIZE));
 	}
 
 	uint32_t require()

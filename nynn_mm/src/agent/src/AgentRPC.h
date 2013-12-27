@@ -1,6 +1,6 @@
 #ifndef AGENT_RPC_H_BY_SATANSON
 #define AGENT_RPC_H_BY_SATANSON
-#include "agent.h"
+#include "Agent.h"
 #include<iostream>
 #include<thrift/protocol/TBinaryProtocol.h>
 #include<thrift/transport/TSocket.h>
@@ -35,7 +35,7 @@ public:
 
 	}
 	bool lock(const int32_t vtxno) {
-		return m_client->lock(vtxno,false);
+		return m_client->lock(vtxno);
 	}
 
 	bool unlock(const int32_t vtxno) {
@@ -54,7 +54,7 @@ public:
 		m_client->read(xblk,vtxno,blkno);
 	}
 private:
-	std::shared_ptr<AgentRPC> m_client;
+	std::shared_ptr<AgentClient> m_client;
 };
 
 }}}
