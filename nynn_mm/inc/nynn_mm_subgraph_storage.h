@@ -218,7 +218,6 @@ public:
 	{
 		if (isFlat(blkno)) {
 			Block* blk=getVolumeBlock(blkno);
-//			log_i("blkno=%d;blk=%p",blkno,blk);/g
 			return blk;
 		}else if (isOverflow(blkno) && blkno<m_superblk.getSupBlkno() ){
 			void *overflowBlk=getOverflowBlock(blkno);
@@ -228,7 +227,6 @@ public:
 				overflowBlk=mf.getBaseAddress();
 				setOverflowBlock(blkno,overflowBlk);
 			}
-//			log_i("blkno=%d;overflow=%p",blkno,overflowBlk);/g
 			return static_cast<Block*>(overflowBlk)+(blkno&OVERFLOW_BLOCKNO_MASK);
 		}else {
 			return NULL;

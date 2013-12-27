@@ -427,12 +427,6 @@ public:
 
 	~MmapFile()
 	{
-		try{
-			sync(MS_SYNC|MS_INVALIDATE);
-		}catch (NynnException& err) {
-			cerr<<err.what()<<endl;
-		}
-		//munmap(m_base,m_length);
 	}
 
 	void *getBaseAddress()const

@@ -20,6 +20,7 @@ int main(int argc, char**argv)
 		content->resize(strlen(line));
 		std::copy(line,line+strlen(line),content->begin());
 		prod->push(vtxno,xblk);
+		vtxno++;
 	}
 	cout<<"vtxno="<<vtxno<<endl;
 	fin.close();
